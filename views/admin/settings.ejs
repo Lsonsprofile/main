@@ -1,0 +1,145 @@
+<%- include('../partials/head') %>
+
+<div class="admin-layout">
+  <%- include('../partials/admin-nav') %>
+
+  <main class="admin-main">
+    <header class="admin-header">
+      <h1>Header &amp; Footer</h1>
+      <p>Edit global navigation and footer content shown on every public page.</p>
+    </header>
+
+    <% if (success === 'header') { %><div class="alert alert-success">Header saved.</div><% } %>
+    <% if (success === 'footer') { %><div class="alert alert-success">Footer saved.</div><% } %>
+
+    <!-- HEADER -->
+    <section class="admin-section">
+      <h2>Header / Navigation</h2>
+      <form action="/admin/settings/header" method="POST" class="admin-form">
+      <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="logoText">Logo text</label>
+            <input type="text" id="logoText" name="logoText" value="<%= header.logoText || '' %>">
+          </div>
+          <div class="form-group">
+            <label for="logoImage">Logo image URL (optional)</label>
+            <input type="url" id="logoImage" name="logoImage" value="<%= header.logoImage || '' %>"
+                   placeholder="Upload in Media, then paste URL">
+          </div>
+        </div>
+
+        <h3>Nav items</h3>
+        <p class="form-hint">For dropdowns: type = dropdown, and list children as <code>Label|/url, Label|/url</code></p>
+
+        <div id="nav-items">
+          <% (header.navItems || []).forEach(function(item, i) { %>
+            <div class="nav-item-row form-row">
+              <div class="form-group">
+                <label>Label</label>
+                <input type="text" name="navLabel" value="<%= item.label %>" required>
+              </div>
+              <div class="form-group">
+                <label>URL</label>
+                <input type="text" name="navUrl" value="<%= item.url || '' %>" placeholder="/lessons">
+              </div>
+              <div class="form-group">
+                <label>Type</label>
+                <select name="navType">
+                  <option value="link" <%= item.type !== 'dropdown' ? 'selected' : '' %>>Link</option>
+                  <option value="dropdown" <%= item.type === 'dropdown' ? 'selected' : '' %>>Dropdown</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Dropdown children</label>
+                <input type="text" name="navDropdown"
+                       value="<%= (item.children || []).map(function(c){ return c.label + '|' + c.url; }).join(', ') %>"
+                       placeholder="HTML|/lessons, CSS|/lessons">
+              </div>
+            </div>
+          <% }) %>
+          <% if (!header.navItems || header.navItems.length === 0) { %>
+            <div class="nav-item-row form-row">
+              <div class="form-group"><label>Label</label><input type="text" name="navLabel" value="Home"></div>
+              <div class="form-group"><label>URL</label><input type="text" name="navUrl" value="/"></div>
+              <div class="form-group"><label>Type</label>
+                <select name="navType"><option value="link">Link</option><option value="dropdown">Dropdown</option></select>
+              </div>
+              <div class="form-group"><label>Dropdown children</label><input type="text" name="navDropdown"></div>
+            </div>
+          <% } %>
+        </div>
+
+        <button type="button" class="btn btn-secondary btn-sm" id="add-nav-item">+ Add nav item</button>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">Save Header</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- FOOTER -->
+    <section class="admin-section">
+      <h2>Footer</h2>
+      <form action="/admin/settings/footer" method="POST" class="admin-form">
+      <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
+        <div class="form-group">
+          <label for="aboutText">About text</label>
+          <textarea id="aboutText" name="aboutText" rows="3"><%= footer.aboutText || '' %></textarea>
+        </div>
+        <div class="form-group">
+          <label for="footerLogo">Footer image URL (optional)</label>
+          <input type="url" id="footerLogo" name="logoImage" value="<%= footer.logoImage || '' %>">
+        </div>
+        <div class="form-group">
+          <label for="copyright">Copyright line</label>
+          <input type="text" id="copyright" name="copyright" value="<%= footer.copyright || '' %>">
+        </div>
+
+        <h3>Link columns</h3>
+        <p class="form-hint">Each column: title + links, one per line as <code>Label|/url|icon</code> (icon optional, e.g. emoji)</p>
+        <% (footer.columns || [{ title: 'Explore', links: [] }]).forEach(function(col, i) { %>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Column title</label>
+              <input type="text" name="colTitle" value="<%= col.title %>">
+            </div>
+            <div class="form-group" style="grid-column: span 2;">
+              <label>Links (one per line)</label>
+              <textarea name="colLinks" rows="4"><%= (col.links || []).map(function(l){ return l.label + '|' + l.url + (l.icon ? '|' + l.icon : ''); }).join('\n') %></textarea>
+            </div>
+          </div>
+        <% }) %>
+
+        <h3>Social / icon links</h3>
+        <p class="form-hint">One per line: <code>Label|https://…|🔗</code></p>
+        <div class="form-group">
+          <textarea name="social" rows="3"><%= (footer.social || []).map(function(s){ return s.label + '|' + s.url + '|' + (s.icon || ''); }).join('\n') %></textarea>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">Save Footer</button>
+        </div>
+      </form>
+    </section>
+  </main>
+</div>
+
+<script>
+  document.getElementById('add-nav-item')?.addEventListener('click', function () {
+    const container = document.getElementById('nav-items');
+    const row = document.createElement('div');
+    row.className = 'nav-item-row form-row';
+    row.innerHTML = `
+      <div class="form-group"><label>Label</label><input type="text" name="navLabel" required></div>
+      <div class="form-group"><label>URL</label><input type="text" name="navUrl" placeholder="/path"></div>
+      <div class="form-group"><label>Type</label>
+        <select name="navType"><option value="link">Link</option><option value="dropdown">Dropdown</option></select>
+      </div>
+      <div class="form-group"><label>Dropdown children</label>
+        <input type="text" name="navDropdown" placeholder="Item|/url, Item|/url">
+      </div>`;
+    container.appendChild(row);
+  });
+</script>
+
+<%- include('../partials/footer') %>

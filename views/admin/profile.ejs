@@ -1,0 +1,125 @@
+<%- include('../partials/head') %>
+
+<div class="admin-layout">
+  <%- include('../partials/admin-nav') %>
+
+  <main class="admin-main">
+    <%
+      const avatar = user.avatarUrl || '';
+      const initial = user.name ? String(user.name).charAt(0).toUpperCase() : 'U';
+      const roleLabel = user.role === 'admin' ? 'Administrator' : 'Learner';
+    %>
+
+    <% if (success === 'updated') { %>
+      <div class="pf-alert pf-alert-ok">Profile updated.</div>
+    <% } %>
+    <% if (error === 'name') { %>
+      <div class="pf-alert pf-alert-err">Name must be at least 2 characters.</div>
+    <% } %>
+    <% if (error === 'image') { %>
+      <div class="pf-alert pf-alert-err">Please upload a valid image (jpg, png, gif, or webp, max 3MB).</div>
+    <% } %>
+
+    <section class="pf-card pf-identity">
+      <div class="pf-identity-left">
+        <div class="pf-avatar">
+          <% if (avatar) { %>
+            <img src="<%= avatar %>" alt="<%= user.name %>" class="pf-avatar-img" id="pf-hero-img">
+          <% } else { %>
+            <span class="pf-avatar-fallback" id="pf-hero-fallback"><%= initial %></span>
+            <img src="" alt="" class="pf-avatar-img" id="pf-hero-img" hidden>
+          <% } %>
+        </div>
+        <div class="pf-identity-text">
+          <h1 class="pf-name"><%= user.name || 'Admin' %></h1>
+          <p class="pf-role"><%= roleLabel %></p>
+          <ul class="pf-meta">
+            <li><span class="pf-meta-label">Email</span> <%= user.email || '—' %></li>
+            <li><span class="pf-meta-label">Access</span> Full admin</li>
+          </ul>
+          <div class="pf-actions">
+            <a href="/admin" class="pf-btn pf-btn-primary">Dashboard</a>
+            <a href="/" class="pf-btn pf-btn-ghost">View site</a>
+          </div>
+        </div>
+      </div>
+      <div class="pf-identity-stats">
+        <div class="pf-stat">
+          <span class="pf-stat-num"><%= typeof adminPageCount !== 'undefined' ? adminPageCount : '—' %></span>
+          <span class="pf-stat-label">Pages</span>
+        </div>
+        <div class="pf-stat">
+          <span class="pf-stat-num"><%= typeof publishedPageCount !== 'undefined' ? publishedPageCount : '—' %></span>
+          <span class="pf-stat-label">Published</span>
+        </div>
+        <div class="pf-stat">
+          <span class="pf-stat-num">Admin</span>
+          <span class="pf-stat-label">Role</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="pf-card pf-edit" style="margin-top:1.25rem;">
+      <h2 class="pf-section-title" style="margin-top:0;">Edit profile</h2>
+      <p class="pf-lead">Update your display name and profile picture. This photo also appears in the site header when you are logged in.</p>
+
+      <form action="/admin/profile" method="POST" enctype="multipart/form-data" class="pf-form">
+        <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
+
+        <div class="pf-form-row">
+          <div class="pf-photo-block">
+            <div class="pf-avatar pf-avatar-sm" id="avatar-preview-wrap">
+              <% if (avatar) { %>
+                <img src="<%= avatar %>" alt="" class="pf-avatar-img" id="avatar-preview-img">
+              <% } else { %>
+                <span class="pf-avatar-fallback" id="avatar-preview-fallback"><%= initial %></span>
+                <img src="" alt="" class="pf-avatar-img" id="avatar-preview-img" hidden>
+              <% } %>
+            </div>
+            <div>
+              <label for="avatar" class="pf-file-label">Change photo</label>
+              <input type="file" id="avatar" name="avatar" accept="image/jpeg,image/png,image/gif,image/webp" class="pf-file">
+              <small class="pf-hint">JPG, PNG, GIF or WebP · max 3MB · square works best</small>
+            </div>
+          </div>
+        </div>
+
+        <div class="pf-form-grid">
+          <div class="form-group">
+            <label for="name">Display name</label>
+            <input type="text" id="name" name="name" required minlength="2" maxlength="100" value="<%= user.name || '' %>">
+          </div>
+          <div class="form-group">
+            <label for="email">Email</label>
+            <input type="email" id="email" value="<%= user.email || '' %>" disabled>
+          </div>
+        </div>
+
+        <button type="submit" class="pf-btn pf-btn-primary">Save profile</button>
+      </form>
+    </section>
+  </main>
+</div>
+
+<script>
+(function () {
+  var input = document.getElementById('avatar');
+  var img = document.getElementById('avatar-preview-img');
+  var fallback = document.getElementById('avatar-preview-fallback');
+  var heroImg = document.getElementById('pf-hero-img');
+  var heroFallback = document.getElementById('pf-hero-fallback');
+  if (!input || !img) return;
+  input.addEventListener('change', function () {
+    var file = input.files && input.files[0];
+    if (!file) return;
+    var url = URL.createObjectURL(file);
+    img.src = url;
+    img.hidden = false;
+    if (fallback) fallback.hidden = true;
+    if (heroImg) { heroImg.src = url; heroImg.hidden = false; }
+    if (heroFallback) heroFallback.hidden = true;
+  });
+})();
+</script>
+
+<%- include('../partials/footer') %>

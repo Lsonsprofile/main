@@ -1,0 +1,65 @@
+<% /* ADMIN_ONLY_FOOTER: platform chrome only for admins; always close document */ %>
+<% if (typeof isAdmin !== 'undefined' && isAdmin) { %>
+<%
+  const footer = typeof siteFooter !== 'undefined' && siteFooter ? siteFooter : {
+    aboutText: 'Progressive web development curriculum.',
+    logoImage: '',
+    columns: [],
+    social: [],
+    copyright: 'Web Development Learning Platform',
+  };
+%>
+<footer class="site-footer">
+  <div class="container footer-inner">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <% if (footer.logoImage) { %>
+          <img src="<%= footer.logoImage %>" alt="" class="footer-logo" loading="lazy">
+        <% } %>
+        <% if (footer.aboutText) { %>
+          <p><%= footer.aboutText %></p>
+        <% } %>
+      </div>
+
+      <% (footer.columns || []).forEach(function(col) { %>
+        <div class="footer-col">
+          <h3 class="footer-heading"><%= col.title %></h3>
+          <ul class="footer-links">
+            <% (col.links || []).forEach(function(link) { %>
+              <li>
+                <a href="<%= link.url %>">
+                  <% if (link.icon) { %><span class="footer-icon" aria-hidden="true"><%= link.icon %></span> <% } %>
+                  <%= link.label %>
+                </a>
+              </li>
+            <% }) %>
+          </ul>
+        </div>
+      <% }) %>
+
+      <% if (footer.social && footer.social.length) { %>
+        <div class="footer-col">
+          <h3 class="footer-heading">Connect</h3>
+          <ul class="footer-social">
+            <% footer.social.forEach(function(s) { %>
+              <li>
+                <a href="<%= s.url %>" target="_blank" rel="noopener" aria-label="<%= s.label %>">
+                  <span class="footer-icon" aria-hidden="true"><%= s.icon || '🔗' %></span>
+                  <%= s.label %>
+                </a>
+              </li>
+            <% }) %>
+          </ul>
+        </div>
+      <% } %>
+    </div>
+
+    <div class="footer-bottom">
+      <p>&copy; <%= new Date().getFullYear() %> <%= footer.copyright || 'Web Development Learning Platform' %></p>
+    </div>
+  </div>
+</footer>
+<% } %>
+<script src="/js/main.js"></script>
+</body>
+</html>

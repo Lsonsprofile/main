@@ -1,0 +1,464 @@
+<%
+  const data = block.data || {};
+  const children = block.children || [];
+  const nestLevel = (typeof depth === 'number' && !isNaN(depth)) ? depth : 0;
+%>
+<article class="block-card <%= block.visible ? '' : 'block-hidden' %>" draggable="true" data-block-card data-block-id="<%= block._id %>" data-block-type="<%= block.type %>" data-parent-id="<%= block.parentId || '' %>" data-block-order="<%= block.order %>" style="margin-left: <%= nestLevel * 1.25 %>rem;">
+  <header class="block-card-header">
+    <span class="block-type"><%= block.type %></span>
+    <span class="block-order">#<%= block.order %></span>
+    <% if (nestLevel > 0) { %><span class="block-nested">nested</span><% } %>
+    <div class="block-actions">
+      <button type="button" class="btn btn-sm block-edit-toggle" data-toggle-block title="Edit block">Edit</button>
+      <button type="button" class="btn btn-sm" data-select-block title="Select block">Select</button>
+      <button type="button" class="btn btn-sm" data-duplicate-tree title="Duplicate this component and its children">Duplicate tree</button>
+      <form action="/admin/pages/<%= page._id %>/content/<%= block._id %>/move" method="POST" class="inline-form">
+        <input type="hidden" name="direction" value="up">
+        <button type="submit" class="btn btn-sm" title="Move up">↑</button>
+      </form>
+      <form action="/admin/pages/<%= page._id %>/content/<%= block._id %>/move" method="POST" class="inline-form">
+        <input type="hidden" name="direction" value="down">
+        <button type="submit" class="btn btn-sm" title="Move down">↓</button>
+      </form>
+      <form action="/admin/pages/<%= page._id %>/content/<%= block._id %>/duplicate" method="POST" class="inline-form">
+        <button type="submit" class="btn btn-sm">Duplicate</button>
+      </form>
+      <form action="/admin/pages/<%= page._id %>/content/<%= block._id %>/delete" method="POST" class="inline-form"
+            onsubmit="return confirm('Delete this block and its children?');">
+        <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+      </form>
+    </div>
+  </header>
+
+  <div class="block-preview" aria-label="Component preview">
+    <%- include('render-block', { block: block }) %>
+    <span class="canvas-resize-handle canvas-resize-e" data-resize="width" title="Resize width" aria-hidden="true"></span>
+    <span class="canvas-resize-handle canvas-resize-s" data-resize="height" title="Resize height" aria-hidden="true"></span>
+    <% if (['section','row','column','container','grid'].includes(block.type) && children.length === 0) { %>
+      <button type="button" class="preview-empty" data-add-element>+ Add Element</button>
+    <% } %>
+  </div>
+
+  <details class="block-settings" data-block-settings <%= nestLevel === 0 && block.type !== 'section' && block.type !== 'grid' && block.type !== 'row' && block.type !== 'column' ? 'open' : '' %>>
+    <summary>Edit <%= block.type %> content and style</summary>
+  <form action="/admin/pages/<%= page._id %>/content/<%= block._id %>" method="POST" class="block-edit-form" data-autosave="true">
+    <% if (block.type === 'heading') { %>
+      <div class="form-group">
+        <label>Text</label>
+        <input type="text" name="text" value="<%= data.text || '' %>">
+      </div>
+      <div class="form-group">
+        <label>Level</label>
+        <select name="level">
+          <option value="h2" <%= data.level === 'h2' ? 'selected' : '' %>>H2</option>
+          <option value="h3" <%= data.level === 'h3' ? 'selected' : '' %>>H3</option>
+          <option value="h4" <%= data.level === 'h4' ? 'selected' : '' %>>H4</option>
+        </select>
+      </div>
+    <% } else if (block.type === 'text') { %>
+      <div class="form-group">
+        <label>Content</label>
+        <textarea name="content" rows="4"><%= data.content || '' %></textarea>
+      </div>
+    <% } else if (block.type === 'button') { %>
+      <div class="form-group"><label>Button text</label><input type="text" name="text" value="<%= data.text || '' %>"></div>
+      <div class="form-group"><label>Button URL</label><input type="url" name="url" value="<%= data.url || '' %>"></div>
+      <div class="form-group">
+        <label>Style</label>
+        <select name="style">
+          <option value="primary" <%= data.style === 'primary' ? 'selected' : '' %>>Primary</option>
+          <option value="secondary" <%= data.style === 'secondary' ? 'selected' : '' %>>Secondary</option>
+        </select>
+      </div>
+      <label><input type="checkbox" name="openInNewTab" value="true" <%= data.openInNewTab ? 'checked' : '' %>> Open in new tab</label>
+    <% } else if (block.type === 'search') { %>
+      <div class="form-group"><label>Placeholder</label><input type="text" name="placeholder" value="<%= data.placeholder || '' %>" placeholder="Search this page..."></div>
+    <% } else if (block.type === 'link') { %>
+      <div class="form-group"><label>Link text</label><input type="text" name="text" value="<%= data.text || '' %>"></div>
+      <div class="form-group"><label>Link URL</label><input type="url" name="url" value="<%= data.url || '' %>"></div>
+      <label><input type="checkbox" name="openInNewTab" value="true" <%= data.openInNewTab ? 'checked' : '' %>> Open in new tab</label>
+    <% } else if (block.type === 'image') { %>
+      <div class="form-group"><label>Image URL</label><input type="url" name="imageUrl" value="<%= data.imageUrl || '' %>"></div>
+      <div class="form-group"><label>Alt Text</label><input type="text" name="altText" value="<%= data.altText || '' %>"></div>
+      <div class="form-group"><label>Caption</label><input type="text" name="caption" value="<%= data.caption || '' %>"></div>
+    <% } else if (block.type === 'video') { %>
+      <div class="form-group">
+        <label>Provider</label>
+        <select name="provider">
+          <option value="youtube" <%= data.provider === 'youtube' ? 'selected' : '' %>>YouTube</option>
+          <option value="vimeo" <%= data.provider === 'vimeo' ? 'selected' : '' %>>Vimeo</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Video URL</label><input type="url" name="url" value="<%= data.url || '' %>"></div>
+      <div class="form-group"><label>Title</label><input type="text" name="title" value="<%= data.title || '' %>"></div>
+    <% } else if (block.type === 'code') { %>
+      <div class="form-group">
+        <label>Language</label>
+        <select name="language">
+          <option value="html" <%= data.language === 'html' ? 'selected' : '' %>>HTML</option>
+          <option value="css" <%= data.language === 'css' ? 'selected' : '' %>>CSS</option>
+          <option value="javascript" <%= data.language === 'javascript' ? 'selected' : '' %>>JavaScript</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Code</label><textarea name="code" rows="6" class="code-input"><%= data.code || '' %></textarea></div>
+    <% } else if (['section', 'row', 'column', 'container', 'grid'].includes(block.type)) { %>
+      <div class="form-group">
+        <label>Semantic HTML element</label>
+        <select name="semanticTag">
+          <% ['div', 'section', 'header', 'footer', 'main', 'article', 'aside', 'nav'].forEach(function(tag) { %>
+            <option value="<%= tag %>" <%= (data.semanticTag || (block.type === 'section' ? 'section' : 'div')) === tag ? 'selected' : '' %>><%= tag %></option>
+          <% }) %>
+        </select>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Display</label><select name="display">
+          <option value="block" <%= data.display === 'block' ? 'selected' : '' %>>Block</option>
+          <option value="flex" <%= data.display === 'flex' ? 'selected' : '' %>>Flex</option>
+          <option value="grid" <%= data.display === 'grid' || block.type === 'grid' ? 'selected' : '' %>>Grid</option>
+        </select></div>
+        <div class="form-group"><label>Width</label><input type="text" name="width" value="<%= data.width || '' %>" placeholder="100%, 1200px"></div>
+        <div class="form-group"><label>Min height</label><input type="text" name="minHeight" value="<%= data.minHeight || '' %>" placeholder="auto or 400px"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Padding</label><input type="text" name="padding" value="<%= data.padding || '' %>" placeholder="1rem"></div>
+        <div class="form-group"><label>Margin</label><input type="text" name="margin" value="<%= data.margin || '' %>" placeholder="0 auto"></div>
+        <div class="form-group"><label>Gap</label><input type="text" name="gap" value="<%= data.gap || '' %>" placeholder="1rem"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Columns</label><input type="text" name="columns" value="<%= data.columns || (block.type === 'grid' ? 3 : '') %>" placeholder="repeat(3, 1fr)"></div>
+        <div class="form-group"><label>Direction</label><select name="flexDirection">
+          <% ['row', 'row-reverse', 'column', 'column-reverse'].forEach(function(direction) { %><option value="<%= direction %>" <%= (data.flexDirection || 'row') === direction ? 'selected' : '' %>><%= direction %></option><% }) %>
+        </select></div>
+        <div class="form-group"><label>Align items</label><select name="alignItems">
+          <% ['stretch', 'start', 'center', 'end'].forEach(function(value) { %><option value="<%= value %>" <%= (data.alignItems || 'stretch') === value ? 'selected' : '' %>><%= value %></option><% }) %>
+        </select></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Justify content</label><select name="justifyContent">
+          <% ['start', 'center', 'end', 'space-between', 'space-around', 'space-evenly'].forEach(function(value) { %><option value="<%= value %>" <%= (data.justifyContent || 'start') === value ? 'selected' : '' %>><%= value %></option><% }) %>
+        </select></div>
+        <div class="form-group"><label>Wrap</label><select name="flexWrap"><option value="nowrap" <%= data.flexWrap !== 'wrap' ? 'selected' : '' %>>No wrap</option><option value="wrap" <%= data.flexWrap === 'wrap' ? 'selected' : '' %>>Wrap</option></select></div>
+        <div class="form-group"><label>Background</label><input type="text" name="background" value="<%= data.background || '' %>" placeholder="#fff or transparent"></div>
+      </div>
+    <% } else if (block.type === 'grid') { %>
+      <div class="form-group">
+        <label>Columns</label>
+        <select name="columns">
+          <option value="2" <%= String(data.columns) === '2' ? 'selected' : '' %>>2</option>
+          <option value="3" <%= String(data.columns) === '3' || !data.columns ? 'selected' : '' %>>3</option>
+          <option value="4" <%= String(data.columns) === '4' ? 'selected' : '' %>>4</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Gap</label><input type="text" name="gap" value="<%= data.gap || '' %>" placeholder="1.5rem"></div>
+    <% } else if (block.type === 'column') { %>
+      <div class="form-group">
+        <label>Width</label>
+        <select name="width">
+          <option value="25%" <%= data.width === '25%' ? 'selected' : '' %>>25%</option>
+          <option value="33.333%" <%= data.width === '33.333%' ? 'selected' : '' %>>33%</option>
+          <option value="50%" <%= data.width === '50%' || !data.width ? 'selected' : '' %>>50%</option>
+          <option value="66.666%" <%= data.width === '66.666%' ? 'selected' : '' %>>66%</option>
+          <option value="100%" <%= data.width === '100%' ? 'selected' : '' %>>100%</option>
+        </select>
+      </div>
+    <% } else if (block.type === 'row') { %>
+      <div class="form-group"><label>Gap</label><input type="text" name="gap" value="<%= data.gap || '1rem' %>"></div>
+    <% } else if (block.type === 'section') { %>
+      <div class="form-group"><label>Background</label><input type="text" name="background" value="<%= data.background || '' %>"></div>
+    <% } else if (block.type === 'informationBox') { %>
+      <div class="form-group"><label>Title</label><input type="text" name="title" value="<%= data.title || '' %>"></div>
+      <div class="form-group"><label>Content</label><textarea name="content" rows="3"><%= data.content || '' %></textarea></div>
+      <div class="form-group">
+        <label>Style</label>
+        <select name="style">
+          <option value="info" <%= data.style === 'info' ? 'selected' : '' %>>Info</option>
+          <option value="tip" <%= data.style === 'tip' ? 'selected' : '' %>>Tip</option>
+          <option value="warning" <%= data.style === 'warning' ? 'selected' : '' %>>Warning</option>
+          <option value="important" <%= data.style === 'important' ? 'selected' : '' %>>Important</option>
+        </select>
+      </div>
+    <% } else if (block.type === 'learningObjectives') { %>
+      <div class="form-group"><label>Objectives (one per line)</label><textarea name="objectivesText" rows="4"><%= (data.objectives || []).join('\n') %></textarea></div>
+    <% } else if (block.type === 'activity') { %>
+      <div class="form-group"><label>Title</label><input type="text" name="title" value="<%= data.title || '' %>"></div>
+      <div class="form-group"><label>Instructions</label><textarea name="instructions" rows="4"><%= data.instructions || '' %></textarea></div>
+      <div class="form-group"><label>Difficulty</label><input type="text" name="difficulty" value="<%= data.difficulty || '' %>"></div>
+    <% } else if (block.type === 'assignment') { %>
+      <div class="form-group"><label>Title</label><input type="text" name="title" value="<%= data.title || '' %>"></div>
+      <div class="form-group"><label>Instructions</label><textarea name="instructions" rows="4"><%= data.instructions || '' %></textarea></div>
+      <div class="form-group"><label>Requirements</label><textarea name="requirements" rows="3"><%= data.requirements || '' %></textarea></div>
+      <div class="form-group"><label>Submission instructions</label><textarea name="submissionInstructions" rows="3"><%= data.submissionInstructions || '' %></textarea></div>
+    <% } else if (block.type === 'card') { %>
+      <div class="form-group"><label>Title</label><input type="text" name="title" value="<%= data.title || '' %>"></div>
+      <div class="form-group"><label>Description</label><textarea name="description" rows="2"><%= data.description || '' %></textarea></div>
+      <div class="form-group"><label>Image URL</label><input type="url" name="imageUrl" value="<%= data.imageUrl || '' %>"></div>
+      <div class="form-group"><label>Button Text</label><input type="text" name="buttonText" value="<%= data.buttonText || '' %>"></div>
+      <div class="form-group"><label>Button URL</label><input type="url" name="buttonUrl" value="<%= data.buttonUrl || '' %>"></div>
+      <div class="form-group">
+        <label>Style</label>
+        <select name="style">
+          <option value="standard" <%= data.style === 'standard' ? 'selected' : '' %>>Standard</option>
+          <option value="feature" <%= data.style === 'feature' ? 'selected' : '' %>>Feature</option>
+          <option value="lesson" <%= data.style === 'lesson' ? 'selected' : '' %>>Lesson</option>
+        </select>
+      </div>
+    <% } else if (block.type === 'hero') { %>
+      <div class="form-group"><label>Title</label><input type="text" name="title" value="<%= data.title || '' %>"></div>
+      <div class="form-group"><label>Subtitle</label><input type="text" name="subtitle" value="<%= data.subtitle || '' %>"></div>
+      <div class="form-group"><label>Button Text</label><input type="text" name="buttonText" value="<%= data.buttonText || '' %>"></div>
+      <div class="form-group"><label>Button URL</label><input type="url" name="buttonUrl" value="<%= data.buttonUrl || '' %>"></div>
+      <div class="form-group"><label>Background Image URL</label><input type="url" name="backgroundImage" value="<%= data.backgroundImage || '' %>"></div>
+      <div class="form-group">
+        <label>Style</label>
+        <select name="style">
+          <option value="centered" <%= data.style === 'centered' ? 'selected' : '' %>>Centered</option>
+          <option value="split" <%= data.style === 'split' ? 'selected' : '' %>>Split</option>
+        </select>
+      </div>
+    <% } else if (block.type === 'cta') { %>
+      <div class="form-group"><label>Title</label><input type="text" name="title" value="<%= data.title || '' %>"></div>
+      <div class="form-group"><label>Text</label><textarea name="text" rows="2"><%= data.text || '' %></textarea></div>
+      <div class="form-group"><label>Button Text</label><input type="text" name="buttonText" value="<%= data.buttonText || '' %>"></div>
+      <div class="form-group"><label>Button URL</label><input type="url" name="buttonUrl" value="<%= data.buttonUrl || '' %>"></div>
+    <% } else if (block.type === 'spacer') { %>
+      <div class="form-group"><label>Height</label><input type="text" name="height" value="<%= data.height || '' %>" placeholder="2rem"></div>
+    <% } else if (block.type === 'quiz') { %>
+      <div class="form-group"><label>Question</label><input type="text" name="question" value="<%= data.question || '' %>"></div>
+      <div class="form-group"><label>Options (one per line)</label><textarea name="optionsText" rows="4"><%= (data.options || []).join('\n') %></textarea></div>
+      <div class="form-group"><label>Correct option (0-based index)</label><input type="number" name="correctIndex" min="0" value="<%= data.correctIndex || 0 %>"></div>
+      <div class="form-group"><label>Explanation</label><textarea name="explanation" rows="2"><%= data.explanation || '' %></textarea></div>
+    <% } else if (block.type === 'quote') { %>
+      <div class="form-group"><label>Quote</label><textarea name="text" rows="3"><%= data.text || '' %></textarea></div>
+      <div class="form-group"><label>Author</label><input type="text" name="author" value="<%= data.author || '' %>"></div>
+    <% } else if (block.type === 'list') { %>
+      <div class="form-group">
+        <label>Items (one per line)</label>
+        <textarea name="itemsText" rows="4"><%= (data.items || []).join('\n') %></textarea>
+        <small class="form-hint">Each item supports links and images, for example: <code>&lt;a href="/about"&gt;About&lt;/a&gt;</code> or <code>&lt;img src="/uploads/example.jpg" alt="Example"&gt;</code>.</small>
+      </div>
+      <div class="form-group">
+        <label><input type="checkbox" name="ordered" value="true" <%= data.ordered ? 'checked' : '' %>> Ordered list</label>
+      </div>
+    <% } else if (block.type === 'advert') { %>
+      <div class="form-group"><label>Title</label><input type="text" name="title" value="<%= data.title || '' %>"></div>
+      <div class="form-group"><label>Description</label><textarea name="description" rows="2"><%= data.description || '' %></textarea></div>
+      <div class="form-group"><label>Image URL</label><input type="url" name="imageUrl" value="<%= data.imageUrl || '' %>"></div>
+      <div class="form-group"><label>Button Text</label><input type="text" name="buttonText" value="<%= data.buttonText || '' %>"></div>
+      <div class="form-group"><label>Target URL</label><input type="url" name="targetUrl" value="<%= data.targetUrl || '' %>"></div>
+    <% } else { %>
+      <div class="form-group"><label>Title</label><input type="text" name="title" value="<%= data.title || '' %>"></div>
+      <div class="form-group"><label>Content</label><textarea name="content" rows="4"><%= data.content || '' %></textarea></div>
+      <p class="form-hint">This component uses the shared content editor and can be extended from the component registry.</p>
+    <% } %>
+    
+    <details class="style-panel">
+      <summary>Style &amp; Animation</summary>
+      <div class="form-row" style="margin-top:0.75rem;">
+        <div class="form-group">
+          <label>Text color</label>
+          <input type="color" name="textColor" value="<%= data.textColor || '#111827' %>">
+        </div>
+        <div class="form-group">
+          <label>Background</label>
+          <input type="color" name="backgroundColor" value="<%= data.backgroundColor || '#ffffff' %>">
+        </div>
+        <div class="form-group">
+          <label>Use background</label>
+          <select name="useBackground">
+            <option value="false" <%= data.useBackground === true || data.useBackground === 'true' ? '' : 'selected' %>>No</option>
+            <option value="true" <%= data.useBackground === true || data.useBackground === 'true' ? 'selected' : '' %>>Yes</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Animation</label>
+          <select name="animation">
+            <option value="" <%= !data.animation ? 'selected' : '' %>>None</option>
+            <option value="fade-in" <%= data.animation === 'fade-in' ? 'selected' : '' %>>Fade In</option>
+            <option value="slide-up" <%= data.animation === 'slide-up' ? 'selected' : '' %>>Slide Up</option>
+            <option value="slide-down" <%= data.animation === 'slide-down' ? 'selected' : '' %>>Slide Down</option>
+            <option value="slide-left" <%= data.animation === 'slide-left' ? 'selected' : '' %>>Slide Left</option>
+            <option value="slide-right" <%= data.animation === 'slide-right' ? 'selected' : '' %>>Slide Right</option>
+            <option value="zoom-in" <%= data.animation === 'zoom-in' ? 'selected' : '' %>>Zoom In</option>
+            <option value="bounce" <%= data.animation === 'bounce' ? 'selected' : '' %>>Bounce</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Duration</label>
+          <select name="animationDuration">
+            <option value="0.4s" <%= data.animationDuration === '0.4s' ? 'selected' : '' %>>Fast (0.4s)</option>
+            <option value="0.7s" <%= !data.animationDuration || data.animationDuration === '0.7s' ? 'selected' : '' %>>Normal (0.7s)</option>
+            <option value="1.2s" <%= data.animationDuration === '1.2s' ? 'selected' : '' %>>Slow (1.2s)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Delay</label>
+          <select name="animationDelay">
+            <option value="0s" <%= !data.animationDelay || data.animationDelay === '0s' ? 'selected' : '' %>>None</option>
+            <option value="0.15s" <%= data.animationDelay === '0.15s' ? 'selected' : '' %>>0.15s</option>
+            <option value="0.3s" <%= data.animationDelay === '0.3s' ? 'selected' : '' %>>0.3s</option>
+            <option value="0.5s" <%= data.animationDelay === '0.5s' ? 'selected' : '' %>>0.5s</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Trigger</label>
+          <select name="animationTrigger">
+            <option value="load" <%= !data.animationTrigger || data.animationTrigger === 'load' ? 'selected' : '' %>>On page load</option>
+            <option value="scroll" <%= data.animationTrigger === 'scroll' ? 'selected' : '' %>>On scroll into view</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Padding</label>
+          <select name="padding">
+            <option value="" <%= !data.padding ? 'selected' : '' %>>Default</option>
+            <option value="0" <%= data.padding === '0' ? 'selected' : '' %>>None</option>
+            <option value="0.5rem" <%= data.padding === '0.5rem' ? 'selected' : '' %>>Small</option>
+            <option value="1rem" <%= data.padding === '1rem' ? 'selected' : '' %>>Medium</option>
+            <option value="1.5rem" <%= data.padding === '1.5rem' ? 'selected' : '' %>>Large</option>
+            <option value="2rem" <%= data.padding === '2rem' ? 'selected' : '' %>>XL</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Border radius</label>
+          <select name="borderRadius">
+            <option value="" <%= !data.borderRadius ? 'selected' : '' %>>Default</option>
+            <option value="0" <%= data.borderRadius === '0' ? 'selected' : '' %>>None</option>
+            <option value="0.25rem" <%= data.borderRadius === '0.25rem' ? 'selected' : '' %>>Small</option>
+            <option value="0.5rem" <%= data.borderRadius === '0.5rem' ? 'selected' : '' %>>Medium</option>
+            <option value="1rem" <%= data.borderRadius === '1rem' ? 'selected' : '' %>>Large</option>
+            <option value="999px" <%= data.borderRadius === '999px' ? 'selected' : '' %>>Pill</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Shadow</label>
+          <select name="boxShadow">
+            <option value="" <%= !data.boxShadow ? 'selected' : '' %>>None</option>
+            <option value="sm" <%= data.boxShadow === 'sm' ? 'selected' : '' %>>Small</option>
+            <option value="md" <%= data.boxShadow === 'md' ? 'selected' : '' %>>Medium</option>
+            <option value="lg" <%= data.boxShadow === 'lg' ? 'selected' : '' %>>Large</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Hover effect</label>
+          <select name="hoverEffect">
+            <option value="" <%= !data.hoverEffect ? 'selected' : '' %>>None</option>
+            <option value="lift" <%= data.hoverEffect === 'lift' ? 'selected' : '' %>>Lift</option>
+            <option value="scale" <%= data.hoverEffect === 'scale' ? 'selected' : '' %>>Scale</option>
+            <option value="glow" <%= data.hoverEffect === 'glow' ? 'selected' : '' %>>Glow</option>
+          </select>
+        </div>
+      </div>
+      <h4 class="style-subheading">Container &amp; responsive size</h4>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Desktop width</label>
+          <select name="widthDesktop">
+            <option value="" <%= !data.widthDesktop ? 'selected' : '' %>>Default (100%)</option>
+            <option value="100%" <%= data.widthDesktop === '100%' ? 'selected' : '' %>>Full 100%</option>
+            <option value="75%" <%= data.widthDesktop === '75%' ? 'selected' : '' %>>75%</option>
+            <option value="50%" <%= data.widthDesktop === '50%' ? 'selected' : '' %>>50%</option>
+            <option value="33.333%" <%= data.widthDesktop === '33.333%' ? 'selected' : '' %>>33%</option>
+            <option value="25%" <%= data.widthDesktop === '25%' ? 'selected' : '' %>>25%</option>
+            <option value="auto" <%= data.widthDesktop === 'auto' ? 'selected' : '' %>>Auto</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Mobile width</label>
+          <select name="widthMobile">
+            <option value="" <%= !data.widthMobile ? 'selected' : '' %>>Default (100%)</option>
+            <option value="100%" <%= data.widthMobile === '100%' ? 'selected' : '' %>>Full 100%</option>
+            <option value="75%" <%= data.widthMobile === '75%' ? 'selected' : '' %>>75%</option>
+            <option value="50%" <%= data.widthMobile === '50%' ? 'selected' : '' %>>50%</option>
+            <option value="auto" <%= data.widthMobile === 'auto' ? 'selected' : '' %>>Auto</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Height</label><input type="text" name="height" value="<%= data.height || '' %>" placeholder="auto, 300px"></div>
+        <div class="form-group">
+          <label>Max width</label>
+          <select name="maxWidth">
+            <option value="" <%= !data.maxWidth ? 'selected' : '' %>>None</option>
+            <option value="24rem" <%= data.maxWidth === '24rem' ? 'selected' : '' %>>Narrow (24rem)</option>
+            <option value="36rem" <%= data.maxWidth === '36rem' ? 'selected' : '' %>>Medium (36rem)</option>
+            <option value="48rem" <%= data.maxWidth === '48rem' ? 'selected' : '' %>>Wide (48rem)</option>
+            <option value="64rem" <%= data.maxWidth === '64rem' ? 'selected' : '' %>>Extra wide (64rem)</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Align in container</label>
+          <select name="align">
+            <option value="" <%= !data.align ? 'selected' : '' %>>Stretch / default</option>
+            <option value="left" <%= data.align === 'left' ? 'selected' : '' %>>Left</option>
+            <option value="center" <%= data.align === 'center' ? 'selected' : '' %>>Center</option>
+            <option value="right" <%= data.align === 'right' ? 'selected' : '' %>>Right</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Wrap in container</label>
+          <select name="useContainer">
+            <option value="false" <%= data.useContainer === true || data.useContainer === 'true' ? '' : 'selected' %>>No</option>
+            <option value="true" <%= data.useContainer === true || data.useContainer === 'true' ? 'selected' : '' %>>Yes (centered max-width)</option>
+          </select>
+        </div>
+      </div>
+    </details>
+
+    <button type="submit" class="btn btn-primary btn-sm">Save Block</button>
+  </form>
+  </details>
+
+  <% if (['section','row','column','container','grid'].includes(block.type)) { %>
+    <div class="add-inside builder-dropzone">
+      <div>
+        <strong>Add content inside this <%= block.type %></strong>
+        <span>Build the layout here without leaving the canvas.</span>
+      </div>
+      <button type="button" class="btn btn-primary btn-sm add-element-button" data-add-element>+ Add Element</button>
+      <form action="/admin/pages/<%= page._id %>/content" method="POST" class="add-block-form">
+        <input type="hidden" name="parentId" value="<%= block._id %>">
+        <select name="type" required>
+          <option value="">Add inside this <%= block.type %>…</option>
+          <option value="heading">Heading</option>
+          <option value="text">Text</option>
+          <option value="image">Image</option>
+          <option value="video">Video</option>
+          <option value="code">Code</option>
+          <option value="button">Button</option>
+          <option value="link">Link</option>
+          <option value="divider">Divider</option>
+          <option value="learningObjectives">Learning Objectives</option>
+          <option value="card">Card</option>
+          <option value="hero">Hero</option>
+          <option value="cta">Call To Action</option>
+          <option value="informationBox">Info Box</option>
+          <option value="activity">Activity</option>
+          <option value="assignment">Assignment</option>
+          <option value="quiz">Quiz</option>
+          <option value="quote">Quote</option>
+          <option value="list">List</option>
+          <option value="advert">Advert</option>
+          <option value="spacer">Spacer</option>
+          <option value="column">Column</option>
+          <option value="container">Container</option>
+          <option value="row">Row</option>
+          <option value="grid">Grid</option>
+        </select>
+        <button type="submit" class="btn btn-sm btn-primary">Add Inside</button>
+      </form>
+    </div>
+  <% } %>
+
+  <% if (children.length > 0) { %>
+    <div class="block-children">
+      <% children.forEach(function(child) { %>
+        <%- include('admin-block', { block: child, page: page, depth: nestLevel + 1 }) %>
+      <% }) %>
+    </div>
+  <% } %>
+</article>

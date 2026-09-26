@@ -1,0 +1,90 @@
+<%
+  const header = typeof siteHeader !== 'undefined' && siteHeader ? siteHeader : {
+    logoText: 'WebDev Learn',
+    logoImage: '',
+    navItems: [
+      { label: 'Home', url: '/', type: 'link' },
+      { label: 'Lessons', url: '/lessons', type: 'link' },
+      { label: 'About', url: '/about', type: 'link' },
+      { label: 'Contact', url: '/contact', type: 'link' },
+    ],
+  };
+
+  function navIsActive(url) {
+    if (typeof currentPath === 'undefined' || !url) return false;
+    if (url === '/') return currentPath === '/';
+    return currentPath === url || currentPath.indexOf(url + '/') === 0;
+  }
+
+  const navUser = typeof currentUser !== 'undefined' ? currentUser : null;
+  const navAvatar = navUser && navUser.avatarUrl ? navUser.avatarUrl : '';
+  const navInitial = navUser && navUser.name ? String(navUser.name).charAt(0).toUpperCase() : 'U';
+%>
+<% if (typeof isAdmin !== "undefined" && isAdmin) { %>
+<header class="site-header">
+  <div class="container header-inner">
+    <a href="/" class="logo" aria-label="Home">
+      <% if (header.logoImage) { %>
+        <img src="<%= header.logoImage %>" alt="<%= header.logoText || 'Logo' %>" class="logo-img">
+      <% } else { %>
+        <span class="logo-mark" aria-hidden="true">W</span>
+      <% } %>
+      <span class="logo-text"><%= header.logoText || 'WebDev Learn' %></span>
+    </a>
+
+    <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false" id="navToggle">
+      <span class="hamburger"></span>
+    </button>
+
+    <nav class="main-nav" id="mainNav" aria-label="Main navigation">
+      <ul class="nav-list">
+        <% (header.navItems || []).forEach(function(item) { %>
+          <% if (item.type === 'dropdown' && item.children && item.children.length) { %>
+            <li class="nav-item-dropdown">
+              <button type="button" class="nav-link nav-dropdown-toggle" aria-expanded="false">
+                <%= item.label %> <span class="nav-caret" aria-hidden="true"></span>
+              </button>
+              <ul class="nav-dropdown">
+                <% item.children.forEach(function(child) { %>
+                  <li>
+                    <a href="<%= child.url %>" class="nav-dropdown-link <%= navIsActive(child.url) ? 'is-active' : '' %>">
+                      <%= child.label %>
+                    </a>
+                  </li>
+                <% }) %>
+              </ul>
+            </li>
+          <% } else { %>
+            <li>
+              <a href="<%= item.url || '#' %>" class="nav-link <%= navIsActive(item.url) ? 'is-active' : '' %>">
+                <%= item.label %>
+              </a>
+            </li>
+          <% } %>
+        <% }) %>
+
+        <% if (isAuthenticated) { %>
+          <% if (isAdmin) { %>
+            <li><a href="/admin" class="nav-link nav-link-admin <%= currentPath && currentPath.indexOf('/admin') === 0 ? 'is-active' : '' %>">Dashboard</a></li>
+          <% } %>
+          <li class="nav-divider" aria-hidden="true"></li>
+          <li class="nav-item-avatar">
+            <a href="/account" class="nav-avatar-link <%= currentPath === '/account' ? 'is-active' : '' %>" title="My profile">
+              <% if (navAvatar) { %>
+                <img src="<%= navAvatar %>" alt="" class="nav-avatar-img" width="32" height="32">
+              <% } else { %>
+                <span class="nav-avatar-fallback" aria-hidden="true"><%= navInitial %></span>
+              <% } %>
+              <span class="nav-avatar-label">Profile</span>
+            </a>
+          </li>
+        <% } else { %>
+          <li class="nav-divider" aria-hidden="true"></li>
+          <li><a href="/login" class="nav-link <%= currentPath === '/login' ? 'is-active' : '' %>">Login</a></li>
+          <li><a href="/register" class="nav-cta">Register</a></li>
+        <% } %>
+      </ul>
+    </nav>
+  </div>
+</header>
+<% } %>

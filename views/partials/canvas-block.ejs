@@ -1,0 +1,36 @@
+<%
+  const type = block.type;
+  const data = block.data || {};
+  const label = { section: 'Section', text: 'Text', image: 'Image', button: 'Button' }[type] || type;
+  const canHaveChildren = type === 'section';
+%>
+<div class="vb-block vb-block-<%= type %>" data-block-id="<%= block._id %>" data-block-type="<%= type %>" data-order="<%= block.order || 0 %>" data-block-data='<%= JSON.stringify(data) %>' draggable="true">
+  <div class="vb-block-toolbar">
+    <span class="vb-block-label"><span class="vb-drag-handle" aria-hidden="true">⠿</span> <%= label %></span>
+    <button type="button" class="vb-block-delete" data-vb-delete title="Delete block" aria-label="Delete block">🗑</button>
+  </div>
+  <div class="vb-block-body">
+    <% if (type === 'section') { %>
+      <div class="vb-section-drop" data-vb-dropzone data-parent-id="<%= block._id %>">
+        <% (block.children || []).forEach(function (child) { %>
+          <%- include('canvas-block', { block: child }) %>
+        <% }) %>
+        <% if (!block.children || !block.children.length) { %>
+          <div class="vb-section-empty">Drop blocks here</div>
+        <% } %>
+      </div>
+    <% } else if (type === 'text') { %>
+      <div class="vb-text-preview"><%- data.content || '<span class="vb-placeholder">Click to add text…</span>' %></div>
+    <% } else if (type === 'image') { %>
+      <% if (data.imageUrl) { %>
+        <img src="<%= data.imageUrl %>" alt="<%= data.altText || '' %>" class="vb-image-preview">
+      <% } else { %>
+        <div class="vb-image-placeholder">🖼 No image set — click to add a URL</div>
+      <% } %>
+    <% } else if (type === 'button') { %>
+      <span class="btn btn-<%= data.style || 'primary' %> vb-button-preview"><%= data.text || 'Button text' %></span>
+    <% } else { %>
+      <div class="vb-unknown-block">Unsupported block type: <%= type %></div>
+    <% } %>
+  </div>
+</div>

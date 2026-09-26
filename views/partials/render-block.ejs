@@ -1,0 +1,290 @@
+<%
+  block = block || { type: "text", data: {}, children: [] };
+  const data = block.data || {};
+  const children = block.children || [];
+  const isRootBlock = typeof root === 'undefined' ? false : root === true;
+
+  // Shared style + animation + responsive size attributes
+  let styleParts = [];
+  if (data.textColor) styleParts.push('color:' + data.textColor);
+  if (data.useBackground === true || data.useBackground === 'true') {
+    if (data.backgroundColor) styleParts.push('background-color:' + data.backgroundColor);
+  }
+  if (data.padding) styleParts.push('padding:' + data.padding);
+  if (data.margin) styleParts.push('margin:' + data.margin);
+  if (data.minHeight) styleParts.push('min-height:' + data.minHeight);
+  if (data.height) styleParts.push('height:' + data.height);
+  if (data.width) styleParts.push('width:' + data.width);
+  if (data.display && ['flex', 'grid'].includes(data.display)) styleParts.push('display:' + data.display);
+  if (data.display === 'flex' && data.flexDirection) styleParts.push('flex-direction:' + data.flexDirection);
+  if (data.display === 'flex' && data.justifyContent) styleParts.push('justify-content:' + data.justifyContent);
+  if (data.display === 'flex' && data.alignItems) styleParts.push('align-items:' + data.alignItems);
+  if (data.display === 'flex' && data.flexWrap) styleParts.push('flex-wrap:' + data.flexWrap);
+  if (data.display === 'grid' && data.columns) styleParts.push('grid-template-columns:' + (String(data.columns).includes('repeat') ? data.columns : 'repeat(' + data.columns + ', minmax(0, 1fr))'));
+  if (data.gap) styleParts.push('gap:' + data.gap);
+  if (data.background) styleParts.push('background:' + data.background);
+  if (data.borderRadius) styleParts.push('border-radius:' + data.borderRadius);
+  if (data.animationDuration) styleParts.push('--anim-duration:' + data.animationDuration);
+  if (data.animationDelay) styleParts.push('--anim-delay:' + data.animationDelay);
+  if (data.widthDesktop) styleParts.push('--w-desktop:' + data.widthDesktop);
+  if (data.widthMobile) styleParts.push('--w-mobile:' + data.widthMobile);
+  if (data.maxWidth) styleParts.push('max-width:' + data.maxWidth);
+  const inlineStyle = styleParts.join(';');
+
+  const classes = ['content-block', 'block-sized'];
+  if (data.animation) {
+    classes.push('anim-' + data.animation);
+    if (data.animationTrigger === 'scroll') {
+      classes.push('anim-on-scroll');
+    } else {
+      classes.push('anim-on-load');
+    }
+  }
+  if (data.boxShadow === 'sm') classes.push('shadow-sm');
+  if (data.boxShadow === 'md') classes.push('shadow-md');
+  if (data.boxShadow === 'lg') classes.push('shadow-lg');
+  if (data.hoverEffect === 'lift') classes.push('hover-lift');
+  if (data.hoverEffect === 'scale') classes.push('hover-scale');
+  if (data.hoverEffect === 'glow') classes.push('hover-glow');
+  if (data.align === 'left') classes.push('align-left');
+  if (data.align === 'center') classes.push('align-center');
+  if (data.align === 'right') classes.push('align-right');
+  if (data.useContainer === true || data.useContainer === 'true') classes.push('in-container');
+  if (data.widthDesktop || data.widthMobile) classes.push('has-responsive-width');
+  const blockClass = classes.join(' ');
+  const openContainer = (data.useContainer === true || data.useContainer === 'true');
+%>
+
+<% if (block.type === 'heading') { %>
+  <% const level = data.level || 'h2'; %>
+  <div class="<%= blockClass %>" style="<%= inlineStyle %>">
+  <% if (level === 'h3') { %>
+    <h3 class="content-heading"><%= data.text %></h3>
+  <% } else if (level === 'h4') { %>
+    <h4 class="content-heading"><%= data.text %></h4>
+  <% } else { %>
+    <h2 class="content-heading"><%= data.text %></h2>
+  <% } %>
+  </div>
+
+<% } else if (block.type === 'text') { %>
+  <div class="content-text <%= blockClass %>" style="<%= inlineStyle %>"><%- data.content %></div>
+
+<% } else if (block.type === 'image') { %>
+  <figure class="content-image <%= blockClass %>" style="<%= inlineStyle %>">
+    <% if (data.link) { %><a href="<%= data.link %>" target="_blank" rel="noopener"><% } %>
+      <img src="<%= data.imageUrl %>" alt="<%= data.altText || '' %>" loading="lazy">
+    <% if (data.link) { %></a><% } %>
+    <% if (data.caption) { %><figcaption><%= data.caption %></figcaption><% } %>
+  </figure>
+
+<% } else if (block.type === 'video') { %>
+  <div class="content-video <%= blockClass %>" style="<%= inlineStyle %>">
+    <% if (data.title) { %><h3 class="video-title"><%= data.title %></h3><% } %>
+    <% if (data.provider === 'youtube' && data.url) {
+         let videoId = '';
+         const m = (data.url || '').match(/(?:youtu\.be\/|v=)([\w-]{11})/);
+         if (m) videoId = m[1];
+    %>
+      <% if (videoId) { %>
+        <div class="video-wrapper">
+          <iframe src="https://www.youtube.com/embed/<%= videoId %>"
+                  title="<%= data.title || 'Video' %>"
+                  frameborder="0" allowfullscreen
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture">
+          </iframe>
+        </div>
+      <% } else { %>
+        <p><a href="<%= data.url %>" target="_blank" rel="noopener">Watch video</a></p>
+      <% } %>
+    <% } else if (data.url) { %>
+      <p><a href="<%= data.url %>" target="_blank" rel="noopener"><%= data.title || 'Watch video' %></a></p>
+    <% } %>
+  </div>
+
+<% } else if (block.type === 'button') { %>
+  <p class="content-button <%= blockClass %>" style="<%= inlineStyle %>">
+    <a href="<%= data.url %>" class="btn btn-<%= data.style || 'primary' %>"
+       <%= data.openInNewTab ? 'target="_blank" rel="noopener"' : '' %>><%= data.text %></a>
+  </p>
+
+<% } else if (block.type === 'link') { %>
+  <p class="content-link <%= blockClass %>" style="<%= inlineStyle %>">
+    <a href="<%= data.url %>" <%= data.openInNewTab ? 'target="_blank" rel="noopener"' : '' %>><%= data.text %></a>
+  </p>
+
+<% } else if (block.type === 'search') { %>
+  <form class="page-search <%= blockClass %>" style="<%= inlineStyle %>" data-page-search role="search">
+    <label class="sr-only" for="page-search-input-<%= block._id %>">Search this page</label>
+    <input id="page-search-input-<%= block._id %>" type="search" placeholder="<%= data.placeholder || 'Search this page...' %>" data-page-search-input>
+    <button type="submit" class="btn btn-primary btn-sm">Search</button>
+  </form>
+
+<% } else if (block.type === 'code') { %>
+  <div class="content-code">
+    <% if (data.description) { %><p class="code-description"><%= data.description %></p><% } %>
+    <pre><code class="language-<%= data.language || 'html' %>"><%= data.code %></code></pre>
+  </div>
+
+<% } else if (block.type === 'informationBox') { %>
+  <aside class="info-box info-box-<%= data.style || 'info' %> <%= blockClass %>" style="<%= inlineStyle %>">
+    <% if (data.title) { %><h3 class="info-box-title"><%= data.title %></h3><% } %>
+    <div class="info-box-content"><%- data.content %></div>
+  </aside>
+
+<% } else if (block.type === 'learningObjectives') { %>
+  <section class="learning-objectives">
+    <h2>Learning Objectives</h2>
+    <ul>
+      <% (data.objectives || []).forEach(function(obj) { %>
+        <li><%= obj %></li>
+      <% }) %>
+    </ul>
+  </section>
+
+<% } else if (block.type === 'activity') { %>
+  <section class="activity-block">
+    <h2><%= data.title || 'Activity' %></h2>
+    <% if (data.difficulty) { %><span class="difficulty">Difficulty: <%= data.difficulty %></span><% } %>
+    <div class="activity-instructions"><%- data.instructions %></div>
+  </section>
+
+<% } else if (block.type === 'assignment') { %>
+  <section class="assignment-block">
+    <h2><%= data.title || 'Assignment' %></h2>
+    <div class="assignment-instructions"><%- data.instructions %></div>
+    <% if (data.requirements) { %>
+      <h3>Requirements</h3>
+      <div><%- data.requirements %></div>
+    <% } %>
+    <% if (data.submissionInstructions) { %>
+      <h3>How to Submit</h3>
+      <div><%- data.submissionInstructions %></div>
+    <% } %>
+  </section>
+
+<% } else if (block.type === 'divider') { %>
+  <hr class="content-divider">
+
+<% } else if (block.type === 'section') { %>
+  <% const sectionTag = ['div', 'section', 'header', 'footer', 'main', 'article', 'aside', 'nav'].includes(data.semanticTag) ? data.semanticTag : 'section'; %>
+  <%- '<' + sectionTag + ' class="page-section ' + blockClass + '" style="' + inlineStyle + '">' %>
+    <% children.forEach(function(child) { %>
+      <%- include('render-block', { block: child }) %>
+    <% }) %>
+  <%- '</' + sectionTag + '>' %>
+
+<% } else if (block.type === 'row') { %>
+  <% const rowTag = ['div', 'section', 'header', 'footer', 'main', 'article', 'aside', 'nav'].includes(data.semanticTag) ? data.semanticTag : 'div'; %>
+  <%- '<' + rowTag + ' class="page-row ' + blockClass + '" style="' + inlineStyle + '">' %>
+    <% children.forEach(function(child) { %>
+      <%- include('render-block', { block: child }) %>
+    <% }) %>
+  <%- '</' + rowTag + '>' %>
+
+<% } else if (block.type === 'column' || block.type === 'container') { %>
+  <% const columnTag = ['div', 'section', 'header', 'footer', 'main', 'article', 'aside', 'nav'].includes(data.semanticTag) ? data.semanticTag : 'div'; %>
+  <%- '<' + columnTag + ' class="page-column ' + blockClass + '" style="' + inlineStyle + ';flex: 0 0 ' + (data.width || '50%') + ';max-width:' + (data.width || '50%') + '">' %>
+    <% children.forEach(function(child) { %>
+      <%- include('render-block', { block: child }) %>
+    <% }) %>
+  <%- '</' + columnTag + '>' %>
+
+<% } else if (block.type === 'grid') { %>
+  <% const gridTag = ['div', 'section', 'header', 'footer', 'main', 'article', 'aside', 'nav'].includes(data.semanticTag) ? data.semanticTag : 'div'; %>
+  <%- '<' + gridTag + ' class="page-grid ' + blockClass + '" style="--grid-cols:' + (data.columns || 3) + ';' + inlineStyle + '">' %>
+    <% children.forEach(function(child) { %>
+      <%- include('render-block', { block: child }) %>
+    <% }) %>
+  <%- '</' + gridTag + '>' %>
+
+<% } else if (block.type === 'card') { %>
+  <article class="content-card content-card-<%= data.style || 'standard' %> <%= blockClass %>" style="<%= inlineStyle %>">
+    <% if (data.imageUrl) { %>
+      <img src="<%= data.imageUrl %>" alt="<%= data.title || '' %>" class="card-image" loading="lazy">
+    <% } %>
+    <div class="card-body">
+      <% if (data.title) { %><h3 class="card-title"><%= data.title %></h3><% } %>
+      <% if (data.description) { %><p class="card-desc"><%= data.description %></p><% } %>
+      <% if (data.buttonText && data.buttonUrl) { %>
+        <a href="<%= data.buttonUrl %>" class="btn btn-secondary btn-sm"><%= data.buttonText %></a>
+      <% } %>
+    </div>
+  </article>
+
+<% } else if (block.type === 'hero') { %>
+  <section class="content-hero content-hero-<%= data.style || 'centered' %> <%= blockClass %> <%= isRootBlock && (data.width === '100%' || data.fullWidth === true || data.fullWidth === 'true') ? 'content-hero-full-bleed' : '' %>"
+           style="<%= (data.backgroundImage ? 'background-image:url(' + data.backgroundImage + ');' : '') + inlineStyle %>">
+    <div class="hero-inner">
+      <h2 class="hero-title"><%= data.title %></h2>
+      <% if (data.subtitle) { %><p class="hero-subtitle"><%= data.subtitle %></p><% } %>
+      <% if (data.buttonText && data.buttonUrl) { %>
+        <a href="<%= data.buttonUrl %>" class="btn btn-primary"><%= data.buttonText %></a>
+      <% } %>
+    </div>
+  </section>
+
+<% } else if (block.type === 'cta') { %>
+  <section class="content-cta <%= blockClass %>" style="<%= inlineStyle %>">
+    <h2><%= data.title %></h2>
+    <% if (data.text) { %><p><%= data.text %></p><% } %>
+    <% if (data.buttonText && data.buttonUrl) { %>
+      <a href="<%= data.buttonUrl %>" class="btn btn-primary"><%= data.buttonText %></a>
+    <% } %>
+  </section>
+
+<% } else if (block.type === 'spacer') { %>
+  <div class="content-spacer" style="height: <%= data.height || '2rem' %>;"></div>
+
+<% } else if (block.type === 'quiz') { %>
+  <div class="content-quiz <%= blockClass %>" style="<%= inlineStyle %>" data-correct="<%= data.correctIndex %>">
+    <h3 class="quiz-question"><%= data.question %></h3>
+    <ul class="quiz-options">
+      <% (data.options || []).forEach(function(opt, i) { %>
+        <li>
+          <button type="button" class="quiz-option" data-index="<%= i %>"><%= opt %></button>
+        </li>
+      <% }) %>
+    </ul>
+    <% if (data.explanation) { %>
+      <p class="quiz-explanation" hidden><%= data.explanation %></p>
+    <% } %>
+  </div>
+
+<% } else if (block.type === 'quote') { %>
+  <blockquote class="content-quote <%= blockClass %>" style="<%= inlineStyle %>">
+    <p><%= data.text %></p>
+    <% if (data.author) { %><cite>— <%= data.author %></cite><% } %>
+  </blockquote>
+
+<% } else if (block.type === 'list') { %>
+  <div class="content-list <%= blockClass %>" style="<%= inlineStyle %>">
+  <% if (data.ordered) { %>
+    <ol>
+      <% (data.items || []).forEach(function(item) { %><li><%- item %></li><% }) %>
+    </ol>
+  <% } else { %>
+    <ul>
+      <% (data.items || []).forEach(function(item) { %><li><%- item %></li><% }) %>
+    </ul>
+  <% } %>
+  </div>
+
+<% } else if (block.type === 'advert') { %>
+  <aside class="content-advert">
+    <% if (data.imageUrl) { %><img src="<%= data.imageUrl %>" alt="<%= data.title || '' %>" loading="lazy"><% } %>
+    <div>
+      <% if (data.title) { %><h3><%= data.title %></h3><% } %>
+      <% if (data.description) { %><p><%= data.description %></p><% } %>
+      <% if (data.buttonText && data.targetUrl) { %>
+        <a href="<%= data.targetUrl %>" class="btn btn-primary btn-sm"><%= data.buttonText %></a>
+      <% } %>
+    </div>
+  </aside>
+
+<% } else { %>
+  <div class="content-block content-fallback <%= blockClass %>" style="<%= inlineStyle %>">
+    <% if (data.title) { %><h3><%= data.title %></h3><% } %>
+    <% if (data.content) { %><div><%- data.content %></div><% } else { %><p><%= block.type %></p><% } %>
+  </div>
+<% } %>

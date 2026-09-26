@@ -1,0 +1,71 @@
+<%- include('../partials/head') %>
+
+<div class="admin-layout">
+  <%- include('../partials/admin-nav') %>
+
+  <main class="admin-main">
+    <header class="admin-header">
+      <h1>Comments</h1>
+      <p>Moderate user comments across all lessons.</p>
+    </header>
+
+    <% if (success) { %>
+      <div class="alert alert-success">
+        <% if (success === 'deleted') { %>Comment deleted.<% } %>
+        <% if (success === 'hidden') { %>Comment hidden.<% } %>
+        <% if (success === 'shown') { %>Comment made visible.<% } %>
+      </div>
+    <% } %>
+
+    <% if (!comments || comments.length === 0) { %>
+      <div class="empty-state"><p>No comments yet.</p></div>
+    <% } else { %>
+      <div class="table-responsive">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>User</th>
+              <th>Comment</th>
+              <th>Lesson</th>
+              <th>Status</th>
+              <th>Date</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% comments.forEach(function(c) { %>
+              <tr>
+                <td><%= c.user && c.user.name ? c.user.name : '—' %></td>
+                <td class="comment-preview"><%= c.content %></td>
+                <td>
+                  <% if (c.page && c.page.slug) { %>
+                    <a href="/lesson/<%= c.page.slug %>" ><%= c.page.title || c.page.slug %></a>
+                  <% } else { %>—<% } %>
+                </td>
+                <td><span class="status-badge status-<%= c.status %>"><%= c.status %></span></td>
+                <td><%= new Date(c.createdAt).toLocaleDateString() %></td>
+                <td class="actions">
+                  <% if (c.status === 'visible') { %>
+                    <form action="/admin/comments/<%= c._id %>/hide" method="POST" class="inline-form">
+                      <button type="submit" class="btn btn-sm">Hide</button>
+                    </form>
+                  <% } else { %>
+                    <form action="/admin/comments/<%= c._id %>/show" method="POST" class="inline-form">
+                      <button type="submit" class="btn btn-sm btn-primary">Show</button>
+                    </form>
+                  <% } %>
+                  <form action="/admin/comments/<%= c._id %>/delete" method="POST" class="inline-form"
+                        onsubmit="return confirm('Delete permanently?');">
+                    <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                  </form>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </main>
+</div>
+
+<%- include('../partials/footer') %>

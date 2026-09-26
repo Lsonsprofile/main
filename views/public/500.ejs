@@ -1,0 +1,10 @@
+<%- include('../partials/head') %>
+<%- include('../partials/nav') %>
+
+<main id="main-content" class="container error-page">
+  <h1>Something Went Wrong</h1>
+  <p><%= typeof message !== 'undefined' ? message : 'An unexpected error occurred.' %></p>
+  <a href="/" class="btn btn-primary">Return Home</a>
+</main>
+
+<%- include('../partials/footer') %>

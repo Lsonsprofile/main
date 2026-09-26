@@ -1,0 +1,102 @@
+<%- include('../partials/head') %>
+
+<div class="admin-layout">
+  <%- include('../partials/admin-nav') %>
+
+  <main class="admin-main">
+    <header class="admin-header">
+      <div>
+        <h1>Pages</h1>
+      <p class="admin-hint">Tip: Edit your site homepage via <a href="/admin/home"><strong>Homepage</strong></a> in the sidebar (slug must be <code>home</code>). View it at <a href="/">/</a> after publishing.</p>
+        <p>Create, edit and publish learning pages.</p>
+      </div>
+      <a href="/admin/pages/create" class="btn btn-primary">+ Create Page</a>
+    </header>
+
+    <% if (success) { %>
+      <div class="alert alert-success">
+        <% if (success === 'published') { %>Page published.<% } %>
+        <% if (success === 'unpublished') { %>Page unpublished.<% } %>
+        <% if (success === 'deleted') { %>Page deleted.<% } %>
+        <% if (success === 'duplicated') { %>Page duplicated as draft.<% } %>
+        <% if (success === 'access-on') { %>User access turned <strong>ON</strong> — students can open this page.<% } %>
+        <% if (success === 'access-off') { %>User access turned <strong>OFF</strong> — only you (admin) can see this page.<% } %>
+      </div>
+    <% } %>
+
+    <% if (!pages || pages.length === 0) { %>
+      <div class="empty-state">
+        <p>No pages yet. Create your first lesson page.</p>
+        <a href="/admin/pages/create" class="btn btn-primary">Create Page</a>
+      </div>
+    <% } else { %>
+      <div class="table-responsive">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Week</th>
+              <th>Title</th>
+              <th>Slug</th>
+              <th>Status</th>
+              <th>User access</th>
+<th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% pages.forEach(function(p) { %>
+              <tr>
+                <td><%= p.weekNumber || '—' %></td>
+                <td><strong><%= p.title %></strong></td>
+                <td><code><%= p.slug === 'home' ? '/' : ((p.builderType === 'custom-html' || p.weekNumber != null) ? '/lesson/' + p.slug : '/' + p.slug) %></code></td>
+                <td>
+                  <span class="status-badge status-<%= p.status %>"><%= p.status %></span>
+                </td>
+                <td>
+                  <form action="/admin/pages/<%= p._id %>/user-access" method="POST" class="inline-form">
+                    <input type="hidden" name="redirect" value="/admin/pages">
+                    <button type="submit"
+                      class="btn btn-sm <%= p.userAccess === false ? 'btn-access-off' : 'btn-access-on' %>"
+                      title="<%= p.userAccess === false ? 'Admin only — click to allow users' : 'Users can open — click to restrict to admin' %>">
+                      <%= p.userAccess === false ? 'OFF · Admin only' : 'ON · Users can open' %>
+                    </button>
+                  </form>
+                </td>
+                <td class="actions">
+                  <a href="/admin/pages/<%= p._id %>/edit" class="btn btn-sm btn-secondary">Edit</a>
+                  <a href="/admin/pages/<%= p._id %>/preview" class="btn btn-sm">Preview</a>
+                  <form action="/admin/pages/<%= p._id %>/duplicate" method="POST" class="inline-form">
+                    <button type="submit" class="btn btn-sm">Duplicate</button>
+                  </form>
+                  <% if (p.status === 'published') { %>
+                    <form action="/admin/pages/<%= p._id %>/unpublish" method="POST" class="inline-form">
+                      <button type="submit" class="btn btn-sm">Unpublish</button>
+                    </form>
+                    <% if (p.slug === 'home') { %>
+                      <a href="/" class="btn btn-sm">View home</a>
+                    <% } else if (p.builderType === 'custom-html' || (p.htmlSource && String(p.htmlSource).trim())) { %>
+                      <a href="/lesson/<%= p.slug %>" class="btn btn-sm">View</a>
+                    <% } else if (p.weekNumber != null) { %>
+                      <a href="/lesson/<%= p.slug %>" class="btn btn-sm">View</a>
+                    <% } else { %>
+                      <a href="/<%= p.slug %>" class="btn btn-sm">View</a>
+                    <% } %>
+                  <% } else { %>
+                    <form action="/admin/pages/<%= p._id %>/publish" method="POST" class="inline-form">
+                      <button type="submit" class="btn btn-sm btn-primary">Publish</button>
+                    </form>
+                  <% } %>
+                  <form action="/admin/pages/<%= p._id %>/delete" method="POST" class="inline-form"
+                        onsubmit="return confirm('Delete this page and all its content?');">
+                    <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                  </form>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </main>
+</div>
+
+<%- include('../partials/footer') %>

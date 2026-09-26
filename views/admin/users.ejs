@@ -1,0 +1,63 @@
+<%- include('../partials/head') %>
+
+<div class="admin-layout">
+  <%- include('../partials/admin-nav') %>
+
+  <main class="admin-main">
+    <header class="admin-header">
+      <h1>Users</h1>
+      <p>Manage registered users and roles.</p>
+    </header>
+
+    <% if (success === 'role-updated') { %><div class="alert alert-success">Role updated.</div><% } %>
+    <% if (success === 'deleted') { %><div class="alert alert-success">User deleted.</div><% } %>
+    <% if (success === 'cannot-demote-self') { %><div class="alert alert-error">You cannot remove your own admin role.</div><% } %>
+    <% if (success === 'cannot-delete-self') { %><div class="alert alert-error">You cannot delete your own account.</div><% } %>
+
+    <% if (!users || users.length === 0) { %>
+      <div class="empty-state"><p>No users yet.</p></div>
+    <% } else { %>
+      <div class="table-responsive">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Role</th>
+              <th>Joined</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% users.forEach(function(u) { %>
+              <tr>
+                <td><%= u.name %><% if (String(u._id) === String(currentUserId)) { %> <em>(you)</em><% } %></td>
+                <td><%= u.email %></td>
+                <td><span class="status-badge status-<%= u.role === 'admin' ? 'published' : 'draft' %>"><%= u.role %></span></td>
+                <td><%= u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '—' %></td>
+                <td class="actions">
+                  <% if (String(u._id) !== String(currentUserId)) { %>
+                    <form action="/admin/users/<%= u._id %>/role" method="POST" class="inline-form">
+                      <input type="hidden" name="role" value="<%= u.role === 'admin' ? 'user' : 'admin' %>">
+                      <button type="submit" class="btn btn-sm">
+                        <%= u.role === 'admin' ? 'Make user' : 'Make admin' %>
+                      </button>
+                    </form>
+                    <form action="/admin/users/<%= u._id %>/delete" method="POST" class="inline-form"
+                          onsubmit="return confirm('Delete this user permanently?');">
+                      <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                    </form>
+                  <% } else { %>
+                    <span class="form-hint">—</span>
+                  <% } %>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </main>
+</div>
+
+<%- include('../partials/footer') %>

@@ -1,0 +1,49 @@
+<%#
+  Platform real-time chat under the lesson embed.
+  Expects: page, isAuthenticated, currentUser
+%>
+<section
+  id="lesson-chat"
+  class="chat-panel"
+  data-page-id="<%= page._id %>"
+  data-user-id="<%= isAuthenticated && currentUser ? currentUser._id : '' %>"
+  data-user-name="<%= isAuthenticated && currentUser ? (currentUser.name || 'You') : '' %>"
+  aria-labelledby="chat-title"
+>
+  <header class="chat-header">
+    <div>
+      <p class="chat-eyebrow">Live · platform chat</p>
+      <h2 id="chat-title">Lesson chat</h2>
+      <p class="chat-lead">Talk with classmates in real time. Separate from the embedded lesson above.</p>
+    </div>
+    <span class="chat-status" id="chat-status" data-state="offline">Offline</span>
+  </header>
+
+  <% if (!isAuthenticated) { %>
+    <div class="chat-login-card">
+      <div>
+        <strong>Log in to join the live chat</strong>
+        <p>Only signed-in learners can send messages.</p>
+      </div>
+      <div class="chat-login-actions">
+        <a href="/login" class="btn btn-primary btn-sm">Log in</a>
+        <a href="/register" class="btn btn-secondary btn-sm">Create account</a>
+      </div>
+    </div>
+  <% } else { %>
+    <div class="chat-messages" id="chat-messages" role="log" aria-live="polite" aria-relevant="additions"></div>
+    <form class="chat-compose" id="chat-form" autocomplete="off">
+      <label class="visually-hidden" for="chat-input">Message</label>
+      <input
+        type="text"
+        id="chat-input"
+        name="message"
+        maxlength="1000"
+        placeholder="Type a message…"
+        required
+      >
+      <button type="submit" class="btn btn-primary btn-sm" id="chat-send">Send</button>
+    </form>
+    <p class="chat-error" id="chat-error" hidden></p>
+  <% } %>
+</section>

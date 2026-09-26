@@ -1,0 +1,70 @@
+<%#
+  Full HTML document in a sandboxed iframe.
+  Uses /embed/:slug when published (best for Tailwind CDN + large pages).
+%>
+<%
+  const raw = typeof htmlSource === 'string' ? htmlSource : '';
+  const pageSlug = typeof slug === 'string' ? slug : '';
+  const useEmbed = pageSlug && String(raw).trim().length > 0;
+
+  let prepared = raw
+    .replace(/\bwindow\.parent\b/g, 'window.self')
+    .replace(/\bwindow\.top\b/g, 'window.self')
+    .replace(/\bwindow\.frameElement\b/g, 'null')
+    .replace(/(href|src|action)\s*=\s*(["']?)\s*javascript:/gi, '$1=$2#blocked:')
+    .replace(/(href|src|action)\s*=\s*(["']?)\s*data:\s*text\/html/gi, '$1=$2#blocked:')
+    .replace(/(href|src|action)\s*=\s*(["']?)\s*vbscript:/gi, '$1=$2#blocked:')
+    .replace(/\s+target\s*=\s*(["'])_blank\1/gi, '')
+    .replace(/\s+target\s*=\s*_blank(?=[\s>])/gi, '');
+
+  if (!String(prepared).trim()) {
+    prepared = '<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Empty</title></head><body style="margin:0;font-family:system-ui;padding:2rem;color:#64748b;"><p>No HTML saved yet. Save then Publish.</p></body></html>';
+  }
+
+  const jsonSource = JSON.stringify(prepared).replace(/</g, '\\u003c');
+  const frameId = 'chf-' + Math.random().toString(36).slice(2, 10);
+  const embedUrl = useEmbed ? ('/embed/' + encodeURIComponent(pageSlug) + '?v=' + Date.now()) : '';
+%>
+<div class="custom-html-frame-wrap" data-frame-host="<%= frameId %>">
+  <iframe
+    id="<%= frameId %>"
+    class="custom-html-frame"
+    title="Page content"
+    sandbox="allow-scripts allow-forms allow-modals allow-popups allow-downloads"
+    referrerpolicy="no-referrer"
+    scrolling="yes"
+    style="height:9000px;min-height:100vh;width:100%;border:0;display:block;"
+    <% if (useEmbed) { %>src="<%= embedUrl %>"<% } %>
+  ></iframe>
+</div>
+<script>
+(function () {
+  var frame = document.getElementById(<%= JSON.stringify(frameId) %>);
+  if (!frame) return;
+
+  function applyHeight(h) {
+    h = Number(h) || 0;
+    if (h < 600) h = 600;
+    if (h > 60000) h = 60000;
+    frame.style.height = h + 'px';
+  }
+
+  window.addEventListener('message', function (ev) {
+    if (!ev || !ev.data) return;
+    if (ev.data.type !== 'chf-resize' && ev.data.type !== 'html-preview-height') return;
+    applyHeight(ev.data.height);
+  });
+
+  <% if (!useEmbed) { %>
+  var source = <%- jsonSource %>;
+  try { frame.srcdoc = source; } catch (e) { frame.setAttribute('srcdoc', source); }
+  <% } %>
+
+  // Fallback: if no resize message arrives, keep tall height so content is not clipped
+  setTimeout(function () {
+    if (parseInt(frame.style.height, 10) < 1000) {
+      frame.style.height = '9000px';
+    }
+  }, 2500);
+})();
+</script>

@@ -1,0 +1,42 @@
+<%- include('../partials/head') %>
+<%- include('../partials/nav') %>
+
+<main id="main-content" class="container">
+  <header class="page-header">
+    <h1>Lessons</h1>
+    <p class="lead">
+      Progressive lessons you can open, study, and mark complete when you are done.
+    </p>
+  </header>
+
+  <% const lessonPages = (typeof pages !== "undefined" && pages) ? pages : []; %>
+  <% const doneSet = new Set((typeof completedIds !== 'undefined' && completedIds) ? completedIds.map(String) : []); %>
+  <% if (lessonPages.length === 0) { %>
+    <div class="empty-state">
+      <p>No published lessons yet. An administrator needs to create and publish pages.</p>
+    </div>
+  <% } else { %>
+    <div class="lesson-grid">
+      <% lessonPages.forEach(function(page) { %>
+        <% const done = doneSet.has(String(page._id)); %>
+        <article class="lesson-card <%= done ? 'lesson-card-done' : '' %>">
+          <% if (page.weekNumber) { %>
+            <span class="week-badge">Week <%= page.weekNumber %></span>
+          <% } %>
+          <% if (done) { %>
+            <span class="done-badge">Completed</span>
+          <% } %>
+          <h2 class="lesson-title">
+            <a href="/lesson/<%= page.slug %>"><%= page.title %></a>
+          </h2>
+          <% if (page.description) { %>
+            <p class="lesson-desc"><%= page.description %></p>
+          <% } %>
+          <a href="/lesson/<%= page.slug %>" class="btn btn-secondary btn-sm">View Lesson</a>
+        </article>
+      <% }) %>
+    </div>
+  <% } %>
+</main>
+
+<%- include('../partials/footer') %>

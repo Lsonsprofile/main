@@ -1,0 +1,91 @@
+<%#
+  Platform discussion panel under the lesson (outside the embed).
+  Expects: page, comments, isAuthenticated, isAdmin, currentUser, commentError (optional)
+%>
+<% const lessonComments = (typeof comments !== 'undefined' && comments) ? comments : []; %>
+<% const commentCount = lessonComments.length; %>
+
+<section id="comments" class="discussion-panel" aria-labelledby="discussion-title">
+  <header class="discussion-header">
+    <div class="discussion-header-text">
+      <p class="discussion-eyebrow">Platform discussion</p>
+      <h2 id="discussion-title">Lesson discussion</h2>
+      <p class="discussion-lead">
+        Ask questions or share notes about this lesson. This area belongs to the site — not the embedded page above.
+      </p>
+    </div>
+    <div class="discussion-count" aria-label="<%= commentCount %> comments">
+      <span class="discussion-count-num"><%= commentCount %></span>
+      <span class="discussion-count-label"><%= commentCount === 1 ? 'comment' : 'comments' %></span>
+    </div>
+  </header>
+
+  <% if (typeof commentError !== 'undefined' && commentError === 'comment-empty') { %>
+    <div class="alert alert-error">Please write something before posting.</div>
+  <% } %>
+
+  <div class="discussion-compose">
+    <% if (isAuthenticated) { %>
+      <form action="/lesson/<%= page.slug %>/comments" method="POST" class="discussion-form">
+        <label for="comment-content" class="discussion-label">Your comment</label>
+        <textarea
+          id="comment-content"
+          name="content"
+          rows="3"
+          required
+          minlength="2"
+          maxlength="2000"
+          placeholder="What did you learn? What is still unclear?"
+        ></textarea>
+        <div class="discussion-form-actions">
+          <span class="discussion-hint">Be respectful. Comments are visible to other learners.</span>
+          <button type="submit" class="btn btn-primary btn-sm">Post comment</button>
+        </div>
+      </form>
+    <% } else { %>
+      <div class="discussion-login-card">
+        <div>
+          <strong>Join the discussion</strong>
+          <p>Log in to post a comment on this lesson.</p>
+        </div>
+        <div class="discussion-login-actions">
+          <a href="/login" class="btn btn-primary btn-sm">Log in</a>
+          <a href="/register" class="btn btn-secondary btn-sm">Create account</a>
+        </div>
+      </div>
+    <% } %>
+  </div>
+
+  <div class="discussion-thread">
+    <% if (commentCount === 0) { %>
+      <div class="discussion-empty">
+        <strong>No comments yet</strong>
+        <p>Be the first to start the discussion for this lesson.</p>
+      </div>
+    <% } else { %>
+      <ul class="discussion-list">
+        <% lessonComments.forEach(function(c) { %>
+          <li class="discussion-item">
+            <div class="discussion-avatar" aria-hidden="true">
+              <%= (c.user && c.user.name ? c.user.name : 'U').charAt(0).toUpperCase() %>
+            </div>
+            <div class="discussion-item-body">
+              <div class="discussion-meta">
+                <strong class="discussion-author"><%= c.user && c.user.name ? c.user.name : 'User' %></strong>
+                <time datetime="<%= c.createdAt %>"><%= new Date(c.createdAt).toLocaleString() %></time>
+              </div>
+              <p class="discussion-content"><%= c.content %></p>
+              <% if (isAuthenticated && (isAdmin || (currentUser && String(currentUser._id) === String(c.userId)))) { %>
+                <form action="/comments/<%= c._id %>/delete" method="POST" class="inline-form"
+                      onsubmit="return confirm('Delete this comment?');">
+                  <input type="hidden" name="redirectSlug" value="<%= page.slug %>">
+                  <button type="submit" class="discussion-delete">Delete</button>
+                </form>
+              <% } %>
+            </div>
+          </li>
+        <% }) %>
+      </ul>
+    <% } %>
+  </div>
+</section>

@@ -1,0 +1,104 @@
+<%- include('../partials/head') %>
+<% if (typeof isPreview !== 'undefined' && isPreview) { %>
+  <div class="preview-banner">Preview mode — this page may be a draft and is only visible to admins.</div>
+<% } %>
+
+<%
+  const isCustomHtml = page && (
+    page.builderType === 'custom-html' ||
+    (page.htmlSource && String(page.htmlSource).trim())
+  );
+%>
+
+<% if (isCustomHtml) { %>
+  <!-- Full-bleed custom HTML (no container max-width) -->
+  <main id="main-content" class="custom-html-page">
+    <%- include('../partials/custom-html-frame', { htmlSource: page.htmlSource || '', slug: page.slug || '' }) %>
+  </main>
+
+  <div class="container lesson-progress-wrap">
+    <% if (typeof progressFlash !== 'undefined' && progressFlash === 'done') { %>
+      <div class="alert alert-success">Lesson marked complete. Great work!</div>
+    <% } %>
+    <% if (typeof progressFlash !== 'undefined' && progressFlash === 'undone') { %>
+      <div class="alert alert-success">Lesson marked incomplete.</div>
+    <% } %>
+    <section class="lesson-progress" aria-label="Your progress">
+      <% if (isAuthenticated) { %>
+        <% if (typeof lessonCompleted !== 'undefined' && lessonCompleted) { %>
+          <div class="progress-banner progress-banner-done">
+            <div>
+              <strong>✓ Completed</strong>
+              <span>You finished this lesson.</span>
+            </div>
+            <form action="/lesson/<%= page.slug %>/incomplete" method="POST">
+              <button type="submit" class="btn btn-secondary btn-sm">Mark incomplete</button>
+            </form>
+          </div>
+        <% } else { %>
+          <div class="progress-banner">
+            <div>
+              <strong>Track your progress</strong>
+              <span>Mark this lesson complete when you are done.</span>
+            </div>
+            <form action="/lesson/<%= page.slug %>/complete" method="POST">
+              <button type="submit" class="btn btn-primary btn-sm">Mark complete</button>
+            </form>
+          </div>
+        <% } %>
+      <% } else { %>
+        <div class="progress-banner progress-banner-guest">
+          <div>
+            <strong>Track progress</strong>
+            <span><a href="/login">Log in</a> to mark lessons complete.</span>
+          </div>
+        </div>
+      <% } %>
+    </section>
+  </div>
+
+  <div class="container">
+    <%- include('../partials/lesson-discussion') %>
+    <%- include('../partials/lesson-chat') %>
+
+    <nav class="lesson-nav" aria-label="Lesson navigation">
+      <a href="/lessons" class="btn btn-secondary">← All Lessons</a>
+    </nav>
+  </div>
+<% } else { %>
+<main id="main-content" class="container lesson-page">
+  <article>
+    <header class="lesson-header">
+      <% if (page.weekNumber) { %>
+        <span class="week-badge">Week <%= page.weekNumber %></span>
+      <% } %>
+      <h1><%= page.title %></h1>
+      <% if (page.description) { %>
+        <p class="lead"><%= page.description %></p>
+      <% } %>
+    </header>
+
+    <div class="lesson-content">
+      <% if (!contentBlocks || contentBlocks.length === 0) { %>
+        <p class="empty-state">This lesson has no content yet. Open the HTML editor to paste a full page.</p>
+      <% } else { %>
+        <% contentBlocks.forEach(function(block) { %>
+          <%- include('../partials/render-block', { block: block, root: true }) %>
+        <% }) %>
+      <% } %>
+    </div>
+
+    <%- include('../partials/lesson-discussion') %>
+    <%- include('../partials/lesson-chat') %>
+
+    <nav class="lesson-nav" aria-label="Lesson navigation">
+      <a href="/lessons" class="btn btn-secondary">← All Lessons</a>
+    </nav>
+  </article>
+</main>
+<% } %>
+
+<% if (isAuthenticated) { %>
+<script src="/socket.io/socket.io.js"></script>
+<script src="/js/lesson-chat.js"></script>
+<% } %>

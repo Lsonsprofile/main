@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= typeof title !== 'undefined' ? title : 'HTML Editor' %></title>
+  <meta name="theme-color" content="#0f172a">
+  <meta name="csrf-token" content="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
+  <link rel="stylesheet" href="/css/main.css">
+  <link rel="stylesheet" href="/css/html-editor.css?v=20">
+</head>
+<body class="html-editor-body">
+
+<div class="html-editor-app" id="html-editor-app" data-page-id="<%= page._id %>">
+  <header class="he-topbar">
+    <div class="he-topbar-left">
+      <a href="/admin/pages" class="he-back" title="All pages">←</a>
+      <div class="he-brand">
+        <span class="he-brand-mark">◇</span>
+        <strong><%= page.title %></strong>
+      </div>
+    </div>
+
+    <div class="he-topbar-center">
+      <div class="he-mode-tabs" role="tablist">
+        <button type="button" class="he-mode-tab" data-mode="code" role="tab">Code</button>
+        <button type="button" class="he-mode-tab is-active" data-mode="split" role="tab" aria-selected="true">Split</button>
+        <button type="button" class="he-mode-tab" data-mode="preview" role="tab">Preview</button>
+      </div>
+    </div>
+
+    <div class="he-topbar-right">
+      <div class="he-device-group" role="group" aria-label="Preview size">
+        <button type="button" class="he-device is-active" data-device="desktop">Desktop</button>
+        <button type="button" class="he-device" data-device="tablet">Tablet</button>
+        <button type="button" class="he-device" data-device="mobile">Mobile</button>
+      </div>
+      <label class="he-live-toggle" title="Auto-refresh preview">
+        <input type="checkbox" id="he-live-preview" checked>
+        <span>Live</span>
+      </label>
+      <button type="button" class="he-btn he-btn-ghost" id="he-upload-html-btn" title="Upload an index.html file">Upload HTML</button>
+      <input type="file" id="he-upload-html-input" accept=".html,.htm,text/html" hidden>
+      <button type="button" class="he-btn he-btn-ghost" id="he-templates-btn" title="Start from a template">Templates</button>
+      <button type="button" class="he-btn he-btn-ghost" id="he-instructions-btn" title="How to use this editor">Instructions</button>
+<button type="button" class="he-btn he-btn-ghost" id="he-refresh-preview">Refresh</button>
+      <span class="he-save-status" id="he-save-status" aria-live="polite">Ready</span>
+      <button type="button" class="he-btn he-btn-secondary" id="he-save-btn">Save</button>
+      <form id="he-publish-form" action="/admin/pages/<%= page._id %>/publish" method="POST" class="he-inline-form">
+        <button type="submit" class="he-btn he-btn-primary" id="he-publish-btn">Publish</button>
+      </form>
+    </div>
+  </header>
+
+  <details class="he-meta-drawer">
+    <summary>
+      <span>Page settings · <em><%= page.status %></em></span>
+      <span class="he-meta-hint">Title &amp; options</span>
+    </summary>
+    <form id="page-settings-form" action="/admin/pages/<%= page._id %>" method="POST" class="he-meta-form">
+      <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
+      <!-- Preserve fields not shown in the UI -->
+      <input type="hidden" name="slug" value="<%= page.slug %>">
+      <input type="hidden" name="description" value="<%= page.description || '' %>">
+      <input type="hidden" name="weekNumber" value="<%= page.weekNumber || '' %>">
+      <input type="hidden" name="category" value="<%= page.category || '' %>">
+      <input type="hidden" name="seoTitle" value="<%= page.seoTitle || '' %>">
+      <input type="hidden" name="seoDescription" value="<%= page.seoDescription || '' %>">
+      <input type="hidden" name="showSidebar" value="false">
+      <input type="hidden" name="listInNav" value="false">
+      <input type="hidden" name="listInFooter" value="false">
+      <input type="hidden" name="showHeader" value="false">
+      <input type="hidden" name="showFooter" value="false">
+
+      <div class="he-meta-grid he-meta-grid-simple">
+        <label>Title
+          <input type="text" name="title" required value="<%= page.title %>">
+        </label>
+        <label>Status
+          <select name="status">
+            <option value="draft" <%= page.status === 'draft' ? 'selected' : '' %>>Draft</option>
+            <option value="published" <%= page.status === 'published' ? 'selected' : '' %>>Published</option>
+            <option value="archived" <%= page.status === 'archived' ? 'selected' : '' %>>Archived</option>
+          </select>
+        </label>
+      </div>
+      <fieldset class="he-visibility">
+        <legend>Who can open this page</legend>
+        <label class="he-access-toggle">
+          <input type="hidden" name="userAccess" value="false">
+          <input type="checkbox" name="userAccess" value="true" <%= page.userAccess !== false ? 'checked' : '' %>>
+          <strong>User access</strong>
+          <span class="he-access-hint">ON = students/users can open it · OFF = only you (admin) can see it</span>
+        </label>
+      </fieldset>
+      <button type="submit" class="he-btn he-btn-secondary">Save settings</button>
+      <% if (page.status === 'published') { %>
+        <a href="/lesson/<%= page.slug %>" class="he-btn he-btn-ghost">View live</a>
+      <% } %>
+    </form>
+  </details>
+
+  <% if (success) { %>
+    <div class="he-alert he-alert-ok" id="he-flash">
+      <% if (success === 'created') { %>Page created. Paste your HTML below.<% } %>
+      <% if (success === 'updated') { %>Settings saved.<% } %>
+    </div>
+  <% } %>
+  <% if (error) { %>
+    <div class="he-alert he-alert-err"><%= error %></div>
+  <% } %>
+
+  
+  <%
+    const pubPath = (page.slug === 'home')
+      ? '/'
+      : ('/lesson/' + page.slug);
+  %>
+  <div class="he-public-url-bar" style="display:flex;flex-wrap:wrap;align-items:center;gap:0.75rem;padding:0.85rem 1rem;margin:0.5rem 0 1rem;background:#0f172a;border:1px solid #334155;border-radius:10px;">
+    <div style="flex:1;min-width:12rem;">
+      <div style="font-size:0.7rem;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;color:#94a3b8;margin-bottom:0.25rem;">Page link (copy into your HTML nav)</div>
+      <code id="he-public-path" style="font-size:0.95rem;color:#38bdf8;word-break:break-all;"><%= pubPath %></code>
+    </div>
+    <button type="button" class="he-btn he-btn-secondary" id="he-copy-path-btn" title="Copy path">Copy path</button>
+    <% if (page.status === 'published') { %>
+      <a class="he-btn he-btn-ghost" href="<%= pubPath %>" target="_self">Open page</a>
+    <% } else { %>
+      <span style="font-size:0.75rem;color:#fbbf24;">Publish to make this link live</span>
+    <% } %>
+  </div>
+  <p style="font-size:0.8rem;color:#94a3b8;margin:-0.5rem 0 1rem;">
+    Example in your HTML: <code style="color:#e2e8f0;">&lt;a href=&quot;<%= pubPath %>&quot;&gt;Open this page&lt;/a&gt;</code>
+  </p>
+
+  <main id="html-editor-main" class="he-workspace" data-layout="split">
+    <section class="he-pane he-pane-code" aria-label="HTML document editor">
+      <div class="he-pane-header">
+        <span class="he-pane-title">HTML</span>
+      </div>
+      <div id="monaco-editor" class="he-monaco" role="textbox" aria-label="HTML source editor"></div>
+    </section>
+
+    <div class="he-splitter" id="he-splitter" title="Drag to resize"></div>
+
+    <section class="he-pane he-pane-preview" aria-label="Isolated live preview">
+      <div class="he-pane-header">
+        <span class="he-pane-title">Preview</span>
+        <span class="he-pane-sub" id="he-preview-sub"></span>
+      </div>
+      <div class="he-preview-frame-wrap" data-device="desktop">
+        <iframe
+          id="he-preview-iframe"
+          class="he-preview-iframe"
+          title="Isolated page preview"
+          sandbox="allow-scripts allow-forms allow-modals allow-popups allow-downloads"
+          referrerpolicy="no-referrer"
+          srcdoc="<!DOCTYPE html><html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'><style>body{margin:0;display:grid;place-items:center;min-height:100vh;font-family:system-ui;background:#f1f5f9;color:#64748b}</style></head><body><p>Loading preview…</p>
+<script>
+(function(){
+  var btn = document.getElementById('he-copy-path-btn');
+  var el = document.getElementById('he-public-path');
+  if (!btn || !el) return;
+  btn.addEventListener('click', function(){
+    var text = (el.textContent || '').trim();
+    if (!text) return;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function(){
+        btn.textContent = 'Copied!';
+        setTimeout(function(){ btn.textContent = 'Copy path'; }, 1500);
+      }).catch(function(){ fallbackCopy(text); });
+    } else {
+      fallbackCopy(text);
+    }
+  });
+  function fallbackCopy(text) {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); btn.textContent = 'Copied!'; }
+    catch(e) {}
+    document.body.removeChild(ta);
+    setTimeout(function(){ btn.textContent = 'Copy path'; }, 1500);
+  }
+})();
+</script>
+
+</body></html>"
+        ></iframe>
+        <div class="he-preview-error" id="he-preview-error" hidden>
+          <strong>Preview error</strong>
+          <pre id="he-preview-error-msg"></pre>
+          <button type="button" class="he-btn he-btn-secondary" id="he-return-code">Return to Code</button>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+
+
+<div class="he-modal" id="he-instructions-modal" hidden>
+  <div class="he-modal-backdrop" data-close-modal></div>
+  <div class="he-modal-panel he-modal-panel-wide" role="dialog" aria-labelledby="he-instructions-title">
+    <header class="he-modal-header">
+      <h2 id="he-instructions-title">How to use this editor</h2>
+      <button type="button" class="he-btn he-btn-ghost" data-close-modal aria-label="Close">✕</button>
+    </header>
+    <div class="he-instructions-body">
+
+      <section class="he-help-block">
+        <h3>Save and publish your page</h3>
+        <ol>
+          <li>Paste your full HTML here, or click <strong>Upload HTML</strong>.</li>
+          <li>Click <strong>Save</strong>. Wait until you see “Saved” with the line count.</li>
+          <li>Click <strong>Publish</strong> so the page goes live.</li>
+        </ol>
+        <p>The live page shows <strong>only your HTML</strong> — no extra site header or footer is added.</p>
+      </section>
+
+      <section class="he-help-block">
+        <h3>Link to this page from another page</h3>
+        <p>Copy the <strong>Page link</strong> above the editor (use <strong>Copy path</strong>).</p>
+        <ul>
+          <li>Homepage → <code>/</code></li>
+          <li>Other pages → <code>/lesson/your-slug</code></li>
+        </ul>
+        <p>Example to put in your HTML:</p>
+        <pre class="he-help-code">&lt;a href="/lesson/week-1"&gt;Open Week 1&lt;/a&gt;</pre>
+      </section>
+
+      <section class="he-help-block">
+        <h3>Show Login or Log out automatically</h3>
+        <p>The site already knows if someone is logged in. You only add a placeholder and a short script.</p>
+
+        <p><strong>Step A</strong> — Put this where you want the buttons (for example in your header):</p>
+        <pre class="he-help-code">&lt;div id="auth-actions"&gt;&lt;/div&gt;</pre>
+
+        <p><strong>Step B</strong> — Paste this once, just before <code>&lt;/body&gt;</code>:</p>
+        <pre class="he-help-code">&lt;script&gt;
+(function () {
+  function paint(auth) {
+    var box = document.getElementById('auth-actions');
+    if (!box) return;
+    auth = auth || { loggedIn: false };
+    if (auth.loggedIn) {
+      box.innerHTML =
+        '&lt;span style="margin-right:8px;"&gt;' +
+          (auth.name ? ('Hi, ' + auth.name) : 'Signed in') +
+        '&lt;/span&gt;' +
+        '&lt;a href="/logout"&gt;Log out&lt;/a&gt;';
+    } else {
+      box.innerHTML =
+        '&lt;a href="/login"&gt;Login&lt;/a&gt; · ' +
+        '&lt;a href="/register"&gt;Sign up&lt;/a&gt;';
+    }
+  }
+
+  // 1) Instant paint from server-injected window.__AUTH__
+  paint(window.__AUTH__);
+
+  // 2) Double-check with the server (handles cache / timing)
+  fetch('/api/me', { credentials: 'same-origin' })
+    .then(function (r) { return r.json(); })
+    .then(function (data) { paint(data); })
+    .catch(function () {});
+})();
+&lt;/script&gt;</pre>
+        <p>The site injects login state into the page <strong>before</strong> your scripts run. The extra <code>/api/me</code> check confirms it with the server.</p>
+
+        <p><strong>Result:</strong></p>
+        <ul>
+          <li>Visitor not logged in → <strong>Login</strong> and <strong>Sign up</strong></li>
+          <li>Logged in → <strong>Hi, name</strong> and <strong>Log out</strong></li>
+        </ul>
+        <p>Useful links you can also hard-code:</p>
+        <ul>
+          <li><code>/login</code> · <code>/register</code> · <code>/logout</code> · <code>/account</code></li>
+        </ul>
+      </section>
+
+      <section class="he-help-block">
+        <h3>Live chat on custom pages</h3>
+        <p>When someone is <strong>logged in</strong>, a floating <strong>Chat</strong> button appears (bottom-left). Admin and learners can both use it.</p>
+        <ul>
+          <li>It is added by the server — not stored in your HTML.</li>
+          <li>Visitors who are not logged in do not see chat.</li>
+          <li>Chat is shared for that page (everyone on the same page can talk).</li>
+        </ul>
+      </section>
+
+      <section class="he-help-block">
+        <h3>Back to the admin Dashboard</h3>
+        <p>When you are logged in as <strong>admin</strong>, a floating <strong>Dashboard</strong> button appears at the bottom-right of every live custom page.</p>
+        <ul>
+          <li>Only admins see it — normal visitors do not.</li>
+          <li>It is added by the server. It is <strong>not</strong> part of your saved HTML, so it will not break your layout.</li>
+        </ul>
+      </section>
+
+      <section class="he-help-block">
+        <h3>Preview tips</h3>
+        <ol>
+          <li>Use <strong>Split</strong> or <strong>Preview</strong>, then click <strong>Refresh</strong>.</li>
+          <li>Scroll inside the preview panel for long pages.</li>
+          <li>Save first if the preview looks incomplete.</li>
+        </ol>
+      </section>
+
+      <p class="he-help-foot">Open this guide anytime with the <strong>Instructions</strong> button.</p>
+    </div>
+  </div>
+</div>
+
+<div class="he-modal" id="he-templates-modal" hidden>
+  <div class="he-modal-backdrop" data-close-modal></div>
+  <div class="he-modal-panel" role="dialog" aria-labelledby="he-templates-title">
+    <header class="he-modal-header">
+      <h2 id="he-templates-title">Page templates</h2>
+      <button type="button" class="he-btn he-btn-ghost" data-close-modal aria-label="Close">✕</button>
+    </header>
+    <p class="he-modal-hint">Insert a starter layout. This replaces the current editor content.</p>
+    <div class="he-template-grid" id="he-template-grid"></div>
+  </div>
+</div>
+<script>
+  window.__PAGE_HTML_SOURCE__ = ''; // loaded via /admin/pages/:id/html-source to avoid truncation
+  window.__PAGE_HTML_LENGTH__ = <%- JSON.stringify(typeof page.htmlSource === 'string' ? page.htmlSource.length : 0) %>;
+  window.__PAGE_ID__ = <%- JSON.stringify(String(page._id)) %>;
+  window.__PAGE_TITLE__ = <%- JSON.stringify(page.title || 'My Page').replace(/</g, '\\u003c') %>;
+</script>
+<script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.52.2/min/vs/loader.js"></script>
+
+<script>
+(function () {
+  var btn = document.getElementById('he-instructions-btn');
+  var modal = document.getElementById('he-instructions-modal');
+  if (!btn || !modal) return;
+  function open() { modal.hidden = false; }
+  function close() { modal.hidden = true; }
+  btn.addEventListener('click', open);
+  modal.querySelectorAll('[data-close-modal]').forEach(function (el) {
+    el.addEventListener('click', close);
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && !modal.hidden) close();
+  });
+})();
+</script>
+
+<script src="/js/html-editor.js?v=20"></script>
+</body>
+</html>

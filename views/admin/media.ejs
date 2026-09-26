@@ -1,0 +1,58 @@
+<%- include('../partials/head') %>
+
+<div class="admin-layout">
+  <%- include('../partials/admin-nav') %>
+
+  <main class="admin-main">
+    <header class="admin-header">
+      <h1>Media Library</h1>
+      <p>Upload images to reuse in content blocks.</p>
+    </header>
+
+    <% if (success === 'uploaded') { %><div class="alert alert-success">Image uploaded.</div><% } %>
+    <% if (success === 'deleted') { %><div class="alert alert-success">Media deleted.</div><% } %>
+    <% if (error === 'nofile') { %><div class="alert alert-error">Please choose a file.</div><% } %>
+    <% if (error === 'upload') { %><div class="alert alert-error">Upload failed. Use an image under 5 MB (jpg, png, gif, webp, svg).</div><% } %>
+
+    <section class="admin-section">
+      <h2>Upload image</h2>
+      <form action="/admin/media/upload" method="POST" enctype="multipart/form-data" class="admin-form">
+        <div class="form-group">
+          <label for="file">Image file (jpg, png, gif, webp, svg · max 5 MB)</label>
+          <input type="file" id="file" name="file" accept="image/*" required>
+        </div>
+        <div class="form-group">
+          <label for="altText">Alt text (accessibility)</label>
+          <input type="text" id="altText" name="altText" placeholder="Describe the image">
+        </div>
+        <button type="submit" class="btn btn-primary">Upload</button>
+      </form>
+    </section>
+
+    <section class="admin-section">
+      <h2>Library</h2>
+      <% if (!media || media.length === 0) { %>
+        <div class="empty-state"><p>No media yet. Upload your first image above.</p></div>
+      <% } else { %>
+        <div class="media-grid">
+          <% media.forEach(function(m) { %>
+            <article class="media-card">
+              <img src="<%= m.url %>" alt="<%= m.altText || m.filename %>" loading="lazy">
+              <div class="media-card-body">
+                <code class="media-url"><%= m.url %></code>
+                <p class="form-hint">Copy this URL into Image / Card / Hero blocks.</p>
+                <% if (m.altText) { %><p class="form-hint">Alt: <%= m.altText %></p><% } %>
+                <form action="/admin/media/<%= m._id %>/delete" method="POST"
+                      onsubmit="return confirm('Delete this file?');">
+                  <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                </form>
+              </div>
+            </article>
+          <% }) %>
+        </div>
+      <% } %>
+    </section>
+  </main>
+</div>
+
+<%- include('../partials/footer') %>
