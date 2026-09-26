@@ -19,15 +19,30 @@ router.get('/', adminController.dashboard);
 
 // Admin profile (name + avatar)
 router.get('/profile', accountController.showAdminProfile);
+const multer = require("multer");
+
 router.post(
-  '/profile',
+  "/media/upload",
   (req, res, next) => {
-    accountController.upload.single('avatar')(req, res, (err) => {
-      if (err) return res.redirect('/admin/profile?error=image');
-      next();
+    mediaController.upload.single("file")(req, res, (err) => {
+      if (!err) return next();
+
+      if (err instanceof multer.MulterError) {
+        if (err.code === "LIMIT_FILE_SIZE") {
+          return res.redirect("/admin/media?error=toobig");
+        }
+        return res.redirect(
+          "/admin/media?error=" + encodeURIComponent(err.code.toLowerCase()),
+        );
+      }
+      if (err && err.code === "INVALID_FILE_TYPE") {
+        return res.redirect("/admin/media?error=badtype");
+      }
+      console.error("Upload error:", err.message);
+      return res.redirect("/admin/media?error=upload");
     });
   },
-  accountController.updateAdminProfile
+  mediaController.uploadMedia,
 );
 router.get('/home', adminController.homeEditor);
 

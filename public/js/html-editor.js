@@ -232,7 +232,7 @@
       fresh.title = 'Isolated page preview';
       fresh.setAttribute(
         'sandbox',
-        'allow-scripts allow-forms allow-modals allow-popups allow-downloads'
+        'allow-scripts allow-same-origin allow-forms allow-modals allow-popups allow-downloads'
       );
       fresh.setAttribute('referrerpolicy', 'no-referrer');
       fresh.setAttribute('scrolling', 'yes');

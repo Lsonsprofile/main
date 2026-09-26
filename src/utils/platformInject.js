@@ -217,24 +217,34 @@ function injectBeforeBodyClose(html, snippet) {
  * @param {object} [page] - page document with _id (needed for chat)
  */
 function prepareFullDocumentHtml(req, htmlSource, page) {
-  let html = String(htmlSource || '');
+  let html = String(htmlSource || "");
   if (!html.trim()) {
     html =
       '<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Empty</title></head>' +
       '<body style="margin:0;font-family:system-ui;padding:2rem;color:#64748b">' +
-      '<p>No HTML yet. In Admin, paste or upload your full HTML, Save, then Publish.</p>' +
-      '</body></html>';
+      "<p>No HTML yet. In Admin, paste or upload your full HTML, Save, then Publish.</p>" +
+      "</body></html>";
   }
   html = html
-    .replace(/\bwindow\.parent\b/g, 'window.self')
-    .replace(/\bwindow\.top\b/g, 'window.self')
-    .replace(/\bwindow\.frameElement\b/g, 'null')
+    .replace(/\bwindow\.parent\b/g, "window.self")
+    .replace(/\bwindow\.top\b/g, "window.self")
+    .replace(/\bwindow\.frameElement\b/g, "null")
     // Neutralize navigation escapes often used in injection payloads
-    .replace(/(href|src|action)\s*=\s*(["']?)\s*javascript:/gi, '$1=$2#blocked:')
-    .replace(/(href|src|action)\s*=\s*(["']?)\s*vbscript:/gi, '$1=$2#blocked:')
-    .replace(/(href|src|action)\s*=\s*(["']?)\s*data:\s*text\/html/gi, '$1=$2#blocked:');
+    .replace(
+      /(href|src|action)\s*=\s*(["']?)\s*javascript:/gi,
+      "$1=$2#blocked:",
+    )
+    .replace(/(href|src|action)\s*=\s*(["']?)\s*vbscript:/gi, "$1=$2#blocked:")
+    .replace(
+      /(href|src|action)\s*=\s*(["']?)\s*data:\s*text\/html/gi,
+      "$1=$2#blocked:",
+    );
 
   html = injectEarly(html, buildAuthBootstrap(req));
+  // TEMPORARY DIAGNOSTIC — remove after we find the bug
+  if (process.env.DISABLE_PLATFORM_INJECTIONS === "1") {
+    return html;
+  }
   const endBits = buildChatWidget(req, page) + buildAdminFab(req);
   html = injectBeforeBodyClose(html, endBits);
   return html;

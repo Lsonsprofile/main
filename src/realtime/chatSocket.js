@@ -2,8 +2,25 @@
  * Socket.io chat rooms keyed by page id.
  */
 
+const { ObjectId } = require('mongodb');
 const chatModel = require('../models/chatModel');
+const pageModel = require('../models/pageModel');
 const { stripHtml } = require('../middleware/security');
+
+/**
+ * A user may join a page's chat room only if that page is one they could
+ * actually view: published, and not restricted to admins via userAccess.
+ * Admins can join any page (including drafts) to help/moderate.
+ */
+async function canAccessPageChat(pageId, user) {
+  if (!ObjectId.isValid(pageId)) return false;
+  const page = await pageModel.findById(pageId);
+  if (!page) return false;
+  if (user && user.role === 'admin') return true;
+  if (page.status !== 'published') return false;
+  if (page.userAccess === false) return false;
+  return true;
+}
 
 function getSessionUser(socket) {
   const session = socket.request && socket.request.session;
@@ -21,7 +38,7 @@ function attachChatSocket(io) {
           return;
         }
         const pageId = payload && payload.pageId ? String(payload.pageId) : '';
-        if (!pageId || pageId.length < 10) {
+        if (!(await canAccessPageChat(pageId, user))) {
           if (typeof ack === 'function') ack({ ok: false, error: 'Invalid page' });
           return;
         }
@@ -42,7 +59,10 @@ function attachChatSocket(io) {
           if (typeof ack === 'function') ack({ ok: false, error: 'Login required' });
           return;
         }
-        const pageId = (payload && payload.pageId) || socket.data.pageId;
+        // Trust only the room this socket actually joined (and was authorized
+        // for in chat:join) — never a client-supplied payload.pageId, or a
+        // user could post into/read from a page's chat without permission.
+        const pageId = socket.data.pageId;
         const body = payload && payload.body ? stripHtml(String(payload.body), 1000) : '';
         if (!pageId || !body.trim()) {
           if (typeof ack === 'function') ack({ ok: false, error: 'Empty message' });

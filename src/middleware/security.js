@@ -2,24 +2,33 @@
  * Security helpers: rate limiting, CSRF, request hardening.
  */
 
-const crypto = require('crypto');
+const crypto = require("crypto");
 
 // Simple in-memory rate limit (per process). Good enough for single-instance deploys.
 const buckets = new Map();
 
 function clientKey(req, suffix) {
-  const ip = (req.headers['x-forwarded-for'] || req.ip || req.socket.remoteAddress || 'unknown')
+  const ip = (
+    req.headers["x-forwarded-for"] ||
+    req.ip ||
+    req.socket.remoteAddress ||
+    "unknown"
+  )
     .toString()
-    .split(',')[0]
+    .split(",")[0]
     .trim();
-  return ip + '|' + suffix;
+  return ip + "|" + suffix;
 }
 
 /**
  * Rate limit middleware factory.
  * @param {{ windowMs: number, max: number, message?: string }} opts
  */
-function rateLimit({ windowMs = 15 * 60 * 1000, max = 100, message = 'Too many requests. Try again later.' } = {}) {
+function rateLimit({
+  windowMs = 15 * 60 * 1000,
+  max = 100,
+  message = "Too many requests. Try again later.",
+} = {}) {
   return function rateLimitMiddleware(req, res, next) {
     const key = clientKey(req, req.path);
     const now = Date.now();
@@ -29,16 +38,23 @@ function rateLimit({ windowMs = 15 * 60 * 1000, max = 100, message = 'Too many r
       buckets.set(key, entry);
     }
     entry.count += 1;
-    res.setHeader('X-RateLimit-Limit', String(max));
-    res.setHeader('X-RateLimit-Remaining', String(Math.max(0, max - entry.count)));
+    res.setHeader("X-RateLimit-Limit", String(max));
+    res.setHeader(
+      "X-RateLimit-Remaining",
+      String(Math.max(0, max - entry.count)),
+    );
     if (entry.count > max) {
       res.status(429);
-      if (req.accepts('html') && !req.xhr && !(req.headers.accept || '').includes('application/json')) {
+      if (
+        req.accepts("html") &&
+        !req.xhr &&
+        !(req.headers.accept || "").includes("application/json")
+      ) {
         return res.send(
           '<!DOCTYPE html><html><body style="font-family:system-ui;padding:2rem">' +
-            '<h1>Too many requests</h1><p>' +
+            "<h1>Too many requests</h1><p>" +
             message +
-            '</p><p><a href="/">Home</a></p></body></html>'
+            '</p><p><a href="/">Home</a></p></body></html>',
         );
       }
       return res.json({ ok: false, error: message });
@@ -49,9 +65,9 @@ function rateLimit({ windowMs = 15 * 60 * 1000, max = 100, message = 'Too many r
 
 /** Ensure session has a CSRF token */
 function ensureCsrfToken(req) {
-  if (!req.session) return '';
+  if (!req.session) return "";
   if (!req.session.csrfToken) {
-    req.session.csrfToken = crypto.randomBytes(24).toString('hex');
+    req.session.csrfToken = crypto.randomBytes(24).toString("hex");
   }
   return req.session.csrfToken;
 }
@@ -71,8 +87,8 @@ function csrfLocals(req, res, next) {
  * Accepts token from body._csrf, body.csrfToken, or header x-csrf-token.
  */
 function csrfProtect(req, res, next) {
-  const method = (req.method || 'GET').toUpperCase();
-  if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') {
+  const method = (req.method || "GET").toUpperCase();
+  if (method === "GET" || method === "HEAD" || method === "OPTIONS") {
     return next();
   }
 
@@ -80,26 +96,33 @@ function csrfProtect(req, res, next) {
   const token = ensureCsrfToken(req);
   const provided =
     (req.body && (req.body._csrf || req.body.csrfToken)) ||
-    req.headers['x-csrf-token'] ||
-    req.headers['csrf-token'] ||
-    '';
+    req.headers["x-csrf-token"] ||
+    req.headers["csrf-token"] ||
+    "";
 
   // Same-origin JSON saves from admin editor: check Origin/Referer
-  const origin = req.headers.origin || '';
-  const referer = req.headers.referer || '';
-  const host = req.headers.host || '';
+  const origin = req.headers.origin || "";
+  const referer = req.headers.referer || "";
+  const host = req.headers.host || "";
   const sameOrigin =
-    (origin && host && origin.replace(/^https?:\/\//, '').split('/')[0] === host) ||
-    (referer && host && referer.replace(/^https?:\/\//, '').split('/')[0] === host);
+    (origin &&
+      host &&
+      origin.replace(/^https?:\/\//, "").split("/")[0] === host) ||
+    (referer &&
+      host &&
+      referer.replace(/^https?:\/\//, "").split("/")[0] === host);
 
   if (provided && provided === token) {
     return next();
   }
 
   // Allow same-origin XHR/fetch that includes credentials (admin HTML save) when Origin matches
-  if (sameOrigin && (req.headers['x-requested-with'] === 'XMLHttpRequest' ||
-      (req.headers.accept || '').includes('application/json') ||
-      (req.headers['content-type'] || '').includes('application/json'))) {
+  if (
+    sameOrigin &&
+    (req.headers["x-requested-with"] === "XMLHttpRequest" ||
+      (req.headers.accept || "").includes("application/json") ||
+      (req.headers["content-type"] || "").includes("application/json"))
+  ) {
     // Still prefer token — but accept same-origin JSON for editor compatibility
     // Require session to exist
     if (req.session && req.session.user) {
@@ -108,31 +131,57 @@ function csrfProtect(req, res, next) {
   }
 
   // Logout GET is intentional for custom HTML links
-  if (method === 'POST' && req.path === '/logout') {
+  if (method === "POST" && req.path === "/logout") {
     // still require session cookie; CSRF less critical for logout
     return next();
   }
 
   if (provided && provided === token) return next();
 
+  /* ---------- DIAGNOSTIC LOG (remove later) ---------- */
+  console.warn(
+    "[csrf-403]",
+    req.method,
+    req.originalUrl,
+    "| session?",
+    Boolean(req.session && req.session.csrfToken),
+    "| provided:",
+    provided ? provided.slice(0, 8) : "(none)",
+    "| expected:",
+    token ? token.slice(0, 8) : "(none)",
+    "| cookie?",
+    Boolean(req.headers.cookie),
+    "| contentType:",
+    req.headers["content-type"] || "(none)",
+    "| accept:",
+    req.headers.accept || "(none)",
+  );
+  /* --------------------------------------------------- */
+
   res.status(403);
-  if (req.accepts('json') && (req.headers.accept || '').includes('application/json')) {
-    return res.json({ ok: false, error: 'Invalid or missing CSRF token. Refresh and try again.' });
+  if (
+    req.accepts("json") &&
+    (req.headers.accept || "").includes("application/json")
+  ) {
+    return res.json({
+      ok: false,
+      error: "Invalid or missing CSRF token. Refresh and try again.",
+    });
   }
   return res.send(
     '<!DOCTYPE html><html><body style="font-family:system-ui;padding:2rem">' +
-      '<h1>Security check failed</h1><p>Please go back, refresh the page, and try again.</p>' +
-      '<p><a href="/">Home</a></p></body></html>'
+      "<h1>Security check failed</h1><p>Please go back, refresh the page, and try again.</p>" +
+      '<p><a href="/">Home</a></p></body></html>',
   );
 }
 
 /** Strip HTML tags and control chars from plain-text user content */
 function stripHtml(input, maxLen = 1000) {
-  let s = String(input == null ? '' : input);
-  s = s.replace(/<[^>]*>/g, '');
-  s = s.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '');
-  s = s.replace(/javascript:/gi, '');
-  s = s.replace(/data:/gi, '');
+  let s = String(input == null ? "" : input);
+  s = s.replace(/<[^>]*>/g, "");
+  s = s.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "");
+  s = s.replace(/javascript:/gi, "");
+  s = s.replace(/data:/gi, "");
   s = s.trim();
   if (s.length > maxLen) s = s.slice(0, maxLen);
   return s;
