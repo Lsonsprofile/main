@@ -13,6 +13,7 @@ const progressController = require('../controllers/progressController');
 
 router.get('/lessons', lessonController.listLessons);
 router.get('/lesson/:slug', lessonController.viewLesson);
+router.get('/lesson/:slug/progress', requireAuth, progressController.getProgressStatus);
 router.post('/lesson/:slug/complete', requireAuth, progressController.markComplete);
 router.post('/lesson/:slug/incomplete', requireAuth, progressController.markIncomplete);
 router.get('/embed/:slug', lessonController.embedPage);
@@ -36,6 +37,20 @@ router.post(
     });
   },
   accountController.updateAccount
+);
+
+// User settings (theme light/dark)
+router.get('/account/settings', requireAuth, accountController.showUserSettings);
+router.post(
+  '/account/settings',
+  requireAuth,
+  (req, res, next) => {
+    accountController.upload.single('avatar')(req, res, (err) => {
+      if (err) return res.redirect('/account/settings?error=image');
+      next();
+    });
+  },
+  accountController.updateUserSettings
 );
 
 module.exports = router;

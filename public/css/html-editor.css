@@ -444,9 +444,9 @@ body.he-resizing {
   align-items: stretch;
 }
 .he-preview-frame-wrap[data-device='desktop'] .he-preview-iframe {
-  width: 100% !important;
-  max-width: none !important;
-  height: 100% !important;
+  width: 100%;
+  max-width: none;
+  height: 100%;
   border-radius: 0;
   box-shadow: none;
   margin: 0;
@@ -486,7 +486,7 @@ body.he-resizing {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
-  align-items: flex-start !important;
+  align-items: flex-start;
 }
 .he-access-toggle input[type="checkbox"] {
   width: 1.15rem;
@@ -500,7 +500,7 @@ body.he-resizing {
 }
 
 /* Modals: templates + media */
-.he-modal[hidden] { display: none !important; }
+.he-modal[hidden] { display: none; }
 .he-modal {
   position: fixed; inset: 0; z-index: 10000;
   display: flex; align-items: center; justify-content: center;
@@ -573,9 +573,9 @@ body.he-resizing {
 /* Large document support (10k+ lines) */
 .he-monaco-scroll-fix,
 .he-monaco {
-  min-height: 0 !important;
-  height: 100% !important;
-  overflow: hidden !important;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
 }
 .he-pane-code {
   min-height: 0;
@@ -587,26 +587,24 @@ body.he-resizing {
 }
 .he-monaco .monaco-editor,
 .he-monaco .overflow-guard {
-  width: 100% !important;
-  height: 100% !important;
+  width: 100%;
+  height: 100%;
 }
 
 .he-preview-iframe {
-  min-height: 70vh !important;
+  min-height: 70vh;
   width: 100%;
   border: 0;
   background: #fff;
 }
 
 
-/* ===== Full long-page preview (override) =====
-   The preview pane scrolls; the iframe is tall enough for full HTML documents.
-*/
+
 .he-preview-frame-wrap {
-  flex: 1 !important;
-  min-height: 0 !important;
-  overflow: auto !important;          /* scroll the long page inside the pane */
-  align-items: flex-start !important;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;          /* scroll the long page inside the pane */
+  align-items: flex-start;
   -webkit-overflow-scrolling: touch;
 }
 
@@ -614,32 +612,31 @@ body.he-resizing {
 .he-preview-frame-wrap[data-device='desktop'] .he-preview-iframe,
 .he-preview-frame-wrap[data-device='tablet'] .he-preview-iframe,
 .he-preview-frame-wrap[data-device='mobile'] .he-preview-iframe {
-  height: auto !important;
-  min-height: 9000px !important;      /* room for full curriculum pages */
-  max-height: none !important;
-  display: block !important;
+  height: auto;
+  max-height: none;
+  display: block;
 }
 
 .he-preview-frame-wrap[data-device='desktop'] .he-preview-iframe {
-  width: 100% !important;
-  max-width: none !important;
+  width: 100%;
+  max-width: none;
 }
 .he-preview-frame-wrap[data-device='tablet'] .he-preview-iframe {
-  width: min(768px, 100%) !important;
+  width: min(768px, 100%);
   margin: 0 auto;
 }
 .he-preview-frame-wrap[data-device='mobile'] .he-preview-iframe {
-  width: min(390px, 100%) !important;
+  width: min(390px, 100%);
   margin: 0 auto;
 }
 
 /* Pane that holds the preview must allow internal scroll */
 .he-pane-preview,
 .he-preview-body {
-  min-height: 0 !important;
-  overflow: hidden !important; /* scroll happens on frame-wrap */
-  display: flex !important;
-  flex-direction: column !important;
+  min-height: 0;
+  overflow: hidden; /* scroll happens on frame-wrap */
+  display: flex;
+  flex-direction: column;
 }
 
 /* Instructions help modal */
@@ -689,4 +686,87 @@ body.he-resizing {
   margin: 0;
   font-size: 0.8rem;
   color: #94a3b8;
+}
+
+
+/* ===== Preview: unlimited document height (no) ===== */
+.he-pane-preview,
+.he-preview-body {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.he-preview-frame-wrap {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.he-preview-iframe {
+  width: 100%;
+  min-height: 100%;
+  height: auto;
+  max-height: none;
+  border: 0;
+  display: block;
+  background: #fff;
+}
+
+.he-preview-frame-wrap[data-device='desktop'] {
+  padding: 0;
+  justify-content: flex-start;
+}
+.he-preview-frame-wrap[data-device='desktop'] .he-preview-iframe {
+  width: 100%;
+  max-width: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.he-preview-frame-wrap[data-device='tablet'] .he-preview-iframe {
+  width: min(768px, 100%);
+  max-width: 768px;
+}
+
+.he-preview-frame-wrap[data-device='mobile'] .he-preview-iframe {
+  width: min(390px, 100%);
+  max-width: 390px;
+}
+
+.he-modal[hidden] {
+  display: none;
+}
+
+
+/* Preview pane: always scroll full document */
+.he-pane-preview {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+.he-preview-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.he-preview-frame-wrap {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.he-preview-iframe {
+  width: 100%;
+  min-height: 100%;
+  border: 0;
+  display: block;
+  background: #fff;
 }

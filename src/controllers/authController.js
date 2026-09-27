@@ -78,6 +78,7 @@ async function register(req, res, next) {
       email: user.email,
       role: user.role,
       avatarUrl: user.avatarUrl || '',
+      theme: user.theme === 'dark' ? 'dark' : 'light',
     };
     req.session.save(function (err) {
       if (err) console.error('session.save', err);
@@ -146,6 +147,7 @@ async function login(req, res, next) {
       email: user.email,
       role: user.role,
       avatarUrl: user.avatarUrl || '',
+      theme: user.theme === 'dark' ? 'dark' : 'light',
     };
     // Regenerate session ID to prevent fixation
     req.session.regenerate(function (err) {

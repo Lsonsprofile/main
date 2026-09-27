@@ -1,0 +1,502 @@
+<%- include('../partials/head') %>
+<%- include('../partials/nav') %>
+
+<%
+  const avatar = (user && user.avatarUrl) ? user.avatarUrl : '';
+  const initial = (user && user.name) ? String(user.name).charAt(0).toUpperCase() : 'U';
+  const roleLabel = (user && user.role === 'admin') ? 'Administrator' : 'Learner';
+  const progressData = (typeof progress !== 'undefined' && progress) ? progress : { completed: [], completedCount: 0, totalLessons: 0 };
+  const completed = progressData.completedCount || 0;
+  const total = progressData.totalLessons || 0;
+  const remaining = Math.max(0, total - completed);
+  const themeVal = (typeof theme !== 'undefined' && theme === 'dark') ? 'dark' : 'light';
+%>
+
+<main id="main-content" class="acct">
+  <% if (success === 'updated') { %>
+    <div class="acct-alert acct-alert-ok">Settings saved.</div>
+  <% } %>
+  <% if (success === 'avatar-removed') { %>
+    <div class="acct-alert acct-alert-ok">Profile photo removed.</div>
+  <% } %>
+  <% if (error === 'name') { %>
+    <div class="acct-alert acct-alert-err">Name must be at least 2 characters.</div>
+  <% } %>
+  <% if (error === 'image') { %>
+    <div class="acct-alert acct-alert-err">Use a valid image (jpg, png, gif, webp · max 3MB).</div>
+  <% } %>
+  <% if (error && error !== 'name' && error !== 'image') { %>
+    <div class="acct-alert acct-alert-err"><%= error %></div>
+  <% } %>
+
+  <header class="acct-top">
+    <div class="acct-top-left">
+      <div class="acct-avatar" id="acct-avatar">
+        <% if (avatar) { %>
+          <img src="<%= avatar %>" alt="" class="acct-avatar-img" id="acct-avatar-img">
+        <% } else { %>
+          <span class="acct-avatar-fallback" id="acct-avatar-fallback"><%= initial %></span>
+        <% } %>
+      </div>
+      <div>
+        <h1 class="acct-name"><%= user.name || 'User' %></h1>
+        <p class="acct-role"><%= roleLabel %> · <%= user.email || '' %></p>
+      </div>
+    </div>
+    <div class="acct-stats">
+      <div class="acct-stat"><strong><%= completed %></strong><span>Done</span></div>
+      <div class="acct-stat"><strong><%= total %></strong><span>Lessons</span></div>
+      <div class="acct-stat"><strong><%= remaining %></strong><span>Left</span></div>
+    </div>
+  </header>
+
+  <div class="acct-grid">
+    <section class="acct-card">
+      <h2>Profile</h2>
+      <form action="/account/settings" method="POST" enctype="multipart/form-data" id="settings-form">
+        <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
+        <input type="hidden" name="removeAvatar" id="removeAvatar" value="false">
+
+        <div class="acct-photo-row">
+          <div class="acct-avatar acct-avatar-sm" id="avatar-preview-wrap">
+            <% if (avatar) { %>
+              <img src="<%= avatar %>" alt="" class="acct-avatar-img" id="avatar-preview-img">
+            <% } else { %>
+              <span class="acct-avatar-fallback" id="avatar-preview-fallback"><%= initial %></span>
+            <% } %>
+          </div>
+          <div class="acct-photo-actions">
+            <label class="acct-file-btn">
+              Change photo
+              <input type="file" id="avatar" name="avatar" accept="image/jpeg,image/png,image/gif,image/webp" hidden>
+            </label>
+            <% if (avatar) { %>
+              <button type="button" class="acct-link-btn" id="avatar-remove-btn">Remove</button>
+            <% } %>
+            <p class="acct-hint">Square image · max 3MB</p>
+          </div>
+        </div>
+
+        <label class="acct-label" for="name">Display name</label>
+        <input class="acct-input" type="text" id="name" name="name" required minlength="2" maxlength="100" value="<%= user.name || '' %>">
+
+        <label class="acct-label" for="email">Email</label>
+        <input class="acct-input" type="email" id="email" value="<%= user.email || '' %>" disabled>
+
+        <h2 class="acct-subhead">Appearance</h2>
+        <div class="acct-theme">
+          <label class="acct-theme-opt">
+            <input type="radio" name="theme" value="light" <%= themeVal !== 'dark' ? 'checked' : '' %>>
+            <span class="acct-swatch acct-swatch-light"></span>
+            <span>Light</span>
+          </label>
+          <label class="acct-theme-opt">
+            <input type="radio" name="theme" value="dark" <%= themeVal === 'dark' ? 'checked' : '' %>>
+            <span class="acct-swatch acct-swatch-dark"></span>
+            <span>Dark</span>
+          </label>
+        </div>
+
+        <div class="acct-actions">
+          <button type="submit" class="acct-btn-primary">Save changes</button>
+          <% if (user.role === 'admin') { %>
+            <a href="/admin" class="acct-btn-ghost">Dashboard</a>
+          <% } else { %>
+            <a href="/" class="acct-btn-ghost">Home</a>
+          <% } %>
+          <form action="/logout" method="POST" class="acct-inline">
+            <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
+            <button type="submit" class="acct-btn-ghost">Log out</button>
+          </form>
+        </div>
+      </form>
+    </section>
+
+    <% if (progressData.completed && progressData.completed.length) { %>
+      <section class="acct-card">
+        <h2>Completed lessons</h2>
+        <ul class="acct-list">
+          <% progressData.completed.forEach(function(p) { %>
+            <li>
+              <a href="/lesson/<%= p.slug %>">
+                <% if (p.weekNumber) { %><span class="acct-badge">W<%= p.weekNumber %></span><% } %>
+                <%= p.title %>
+              </a>
+            </li>
+          <% }) %>
+        </ul>
+      </section>
+    <% } else { %>
+      <section class="acct-card acct-card-muted">
+        <h2>Progress</h2>
+        <p class="acct-empty">No completed lessons yet. Open a page and use <strong>Mark complete</strong>.</p>
+      </section>
+    <% } %>
+  </div>
+</main>
+
+<style>
+  .acct {
+    max-width: 52rem;
+    margin: 0 auto;
+    padding: 1.25rem 1rem 2.5rem;
+  }
+  .acct-alert {
+    border-radius: 10px;
+    padding: 0.65rem 0.9rem;
+    margin-bottom: 1rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+  .acct-alert-ok { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
+  .acct-alert-err { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+
+  .acct-top {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    background: #fff;
+    border: 1px solid #e8eef5;
+    border-radius: 14px;
+    padding: 1rem 1.15rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 2px 12px rgba(15, 23, 42, 0.04);
+  }
+  .acct-top-left {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    min-width: 0;
+  }
+  .acct-avatar {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    overflow: hidden;
+    flex-shrink: 0;
+    background: #e2e8f0;
+    border: 2px solid #f1f5f9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .acct-avatar-sm { width: 44px; height: 44px; }
+  .acct-avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .acct-avatar-fallback {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: #64748b;
+    line-height: 1;
+  }
+  .acct-name {
+    margin: 0;
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: #0f172a;
+    letter-spacing: -0.02em;
+  }
+  .acct-role {
+    margin: 0.15rem 0 0;
+    font-size: 0.8rem;
+    color: #64748b;
+    font-weight: 500;
+  }
+  .acct-stats {
+    display: flex;
+    gap: 1.25rem;
+  }
+  .acct-stat {
+    text-align: center;
+    min-width: 2.75rem;
+  }
+  .acct-stat strong {
+    display: block;
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: #2563eb;
+    line-height: 1.2;
+  }
+  .acct-stat span {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+
+  .acct-grid {
+    display: grid;
+    gap: 1rem;
+  }
+  @media (min-width: 800px) {
+    .acct-grid { grid-template-columns: 1.2fr 0.9fr; align-items: start; }
+  }
+  .acct-card {
+    background: #fff;
+    border: 1px solid #e8eef5;
+    border-radius: 14px;
+    padding: 1.15rem 1.2rem;
+    box-shadow: 0 2px 12px rgba(15, 23, 42, 0.04);
+  }
+  .acct-card h2 {
+    margin: 0 0 0.9rem;
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: #334155;
+  }
+  .acct-subhead {
+    margin: 1.15rem 0 0.65rem;
+    font-size: 0.9rem;
+  }
+  .acct-card-muted { background: #f8fafc; }
+
+  .acct-photo-row {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    margin-bottom: 1rem;
+  }
+  .acct-photo-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 0.75rem;
+  }
+  .acct-file-btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.4rem 0.75rem;
+    border-radius: 8px;
+    background: #f1f5f9;
+    color: #0f172a;
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+    border: 1px solid #e2e8f0;
+  }
+  .acct-file-btn:hover { background: #e2e8f0; }
+  .acct-link-btn {
+    border: 0;
+    background: transparent;
+    color: #dc2626;
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+    padding: 0.25rem 0;
+  }
+  .acct-hint {
+    margin: 0;
+    width: 100%;
+    font-size: 0.72rem;
+    color: #94a3b8;
+  }
+
+  .acct-label {
+    display: block;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #64748b;
+    margin: 0.65rem 0 0.3rem;
+  }
+  .acct-input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.55rem 0.7rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    color: #0f172a;
+    background: #fff;
+  }
+  .acct-input:disabled {
+    background: #f1f5f9;
+    color: #64748b;
+  }
+  .acct-input:focus {
+    outline: 2px solid #93c5fd;
+    border-color: #3b82f6;
+  }
+
+  .acct-theme {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+  }
+  .acct-theme-opt {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.45rem 0.7rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #334155;
+  }
+  .acct-theme-opt:has(input:checked) {
+    border-color: #3b82f6;
+    background: #eff6ff;
+  }
+  .acct-theme-opt input { accent-color: #2563eb; }
+  .acct-swatch {
+    width: 1.25rem;
+    height: 1.25rem;
+    border-radius: 6px;
+    border: 1px solid #cbd5e1;
+  }
+  .acct-swatch-light { background: #f8fafc; }
+  .acct-swatch-dark { background: #0f172a; border-color: #334155; }
+
+  .acct-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 1.15rem;
+    align-items: center;
+  }
+  .acct-inline { display: inline; margin: 0; }
+  .acct-btn-primary {
+    border: 0;
+    border-radius: 999px;
+    padding: 0.5rem 1.1rem;
+    background: #2563eb;
+    color: #fff;
+    font-weight: 700;
+    font-size: 0.85rem;
+    cursor: pointer;
+  }
+  .acct-btn-primary:hover { background: #1d4ed8; }
+  .acct-btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid #e2e8f0;
+    border-radius: 999px;
+    padding: 0.45rem 0.9rem;
+    background: #fff;
+    color: #475569;
+    font-weight: 700;
+    font-size: 0.8rem;
+    text-decoration: none;
+    cursor: pointer;
+  }
+  .acct-btn-ghost:hover { background: #f8fafc; }
+
+  .acct-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .acct-list li { border-bottom: 1px solid #f1f5f9; }
+  .acct-list li:last-child { border-bottom: 0; }
+  .acct-list a {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.55rem 0;
+    text-decoration: none;
+    color: #0f172a;
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+  .acct-list a:hover { color: #2563eb; }
+  .acct-badge {
+    font-size: 0.65rem;
+    font-weight: 800;
+    background: #e0f2fe;
+    color: #0369a1;
+    padding: 0.15rem 0.35rem;
+    border-radius: 5px;
+  }
+  .acct-empty {
+    margin: 0;
+    font-size: 0.875rem;
+    color: #64748b;
+    line-height: 1.5;
+  }
+
+  html[data-theme="dark"] .acct-top,
+  html[data-theme="dark"] .acct-card {
+    background: #111827;
+    border-color: #1e293b;
+  }
+  html[data-theme="dark"] .acct-name { color: #f1f5f9; }
+  html[data-theme="dark"] .acct-card h2 { color: #e2e8f0; }
+  html[data-theme="dark"] .acct-input {
+    background: #0f172a;
+    border-color: #334155;
+    color: #f1f5f9;
+  }
+  html[data-theme="dark"] .acct-input:disabled { background: #1e293b; }
+  html[data-theme="dark"] .acct-file-btn {
+    background: #1e293b;
+    border-color: #334155;
+    color: #e2e8f0;
+  }
+  html[data-theme="dark"] .acct-btn-ghost {
+    background: #1e293b;
+    border-color: #334155;
+    color: #cbd5e1;
+  }
+  html[data-theme="dark"] .acct-theme-opt {
+    border-color: #334155;
+    color: #e2e8f0;
+  }
+  html[data-theme="dark"] .acct-theme-opt:has(input:checked) {
+    background: #1e3a5f;
+    border-color: #3b82f6;
+  }
+  html[data-theme="dark"] .acct-list a { color: #e2e8f0; }
+  html[data-theme="dark"] .acct-card-muted { background: #0f172a; }
+</style>
+
+<script>
+(function () {
+  var input = document.getElementById('avatar');
+  var wrap = document.getElementById('avatar-preview-wrap');
+  var hero = document.getElementById('acct-avatar');
+  var removeBtn = document.getElementById('avatar-remove-btn');
+  var removeField = document.getElementById('removeAvatar');
+  var form = document.getElementById('settings-form');
+  if (!wrap) return;
+
+  function setImg(target, url) {
+    if (!target) return;
+    target.innerHTML = '';
+    var img = document.createElement('img');
+    img.src = url;
+    img.alt = '';
+    img.className = 'acct-avatar-img';
+    target.appendChild(img);
+  }
+
+  if (input) {
+    input.addEventListener('change', function () {
+      var file = input.files && input.files[0];
+      if (!file) return;
+      var url = URL.createObjectURL(file);
+      setImg(wrap, url);
+      setImg(hero, url);
+      if (removeField) removeField.value = 'false';
+    });
+  }
+
+  if (removeBtn && form) {
+    removeBtn.addEventListener('click', function () {
+      if (!confirm('Remove your profile photo?')) return;
+      if (removeField) removeField.value = 'true';
+      if (input) input.value = '';
+      form.submit();
+    });
+  }
+})();
+</script>
+
+<%- include('../partials/footer') %>

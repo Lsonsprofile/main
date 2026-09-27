@@ -821,20 +821,25 @@ async function htmlPreview(req, res, next) {
 
     const probe =
       '<script>(function(){function measure(){try{' +
+      'var b=document.body,d=document.documentElement;' +
       'var h=Math.max(' +
-      'document.body?document.body.scrollHeight:0,' +
-      'document.documentElement?document.documentElement.scrollHeight:0,' +
-      'document.body?document.body.offsetHeight:0,1200);' +
+      'b?b.scrollHeight:0,b?b.offsetHeight:0,b?b.clientHeight:0,' +
+      'd?d.scrollHeight:0,d?d.offsetHeight:0,d?d.clientHeight:0,320);' +
       'if(window.parent&&window.parent!==window){' +
       'window.parent.postMessage({type:"html-preview-height",height:h},"*");}' +
       '}catch(e){}}' +
-      'window.addEventListener("load",function(){measure();setTimeout(measure,500);setTimeout(measure,1500);});' +
-      'setInterval(measure,1200);' +
+      'window.addEventListener("load",function(){measure();setTimeout(measure,200);setTimeout(measure,800);setTimeout(measure,2000);});' +
+      'window.addEventListener("resize",measure);' +
+      'setInterval(measure,2000);' +
       '})();</scr' + 'ipt>';
-    if (/<\/body>/i.test(html)) {
-      html = html.replace(/<\/body>/i, probe + '</body>');
-    } else {
-      html += probe;
+    {
+      const lower = html.toLowerCase();
+      const idx = lower.lastIndexOf('</body>');
+      if (idx !== -1) {
+        html = html.slice(0, idx) + probe + html.slice(idx);
+      } else {
+        html += probe;
+      }
     }
 
     res.setHeader('Content-Type', 'text/html; charset=utf-8');

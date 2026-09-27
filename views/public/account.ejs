@@ -4,10 +4,10 @@
 <%
   const avatar = user.avatarUrl || '';
   const initial = user.name ? String(user.name).charAt(0).toUpperCase() : 'U';
-  const progress = typeof progress !== 'undefined' && progress ? progress : { completed: [], completedCount: 0, totalLessons: 0 };
+  const progressData = (typeof progress !== 'undefined' && progress) ? progress : { completed: [], completedCount: 0, totalLessons: 0 };
   const roleLabel = user.role === 'admin' ? 'Administrator' : 'Learner';
-  const completed = progress.completedCount || 0;
-  const total = progress.totalLessons || 0;
+  const completed = progressData.completedCount || 0;
+  const total = progressData.totalLessons || 0;
   const remaining = Math.max(0, total - completed);
 %>
 
@@ -43,8 +43,10 @@
         <div class="pf-actions">
           <% if (user.role === 'admin') { %>
             <a href="/admin" class="pf-btn pf-btn-primary">Dashboard</a>
+            <a href="/admin/settings" class="pf-btn pf-btn-ghost">Settings</a>
           <% } else { %>
             <a href="/" class="pf-btn pf-btn-primary">Home</a>
+            <a href="/account/settings" class="pf-btn pf-btn-ghost">Settings</a>
           <% } %>
           <form action="/logout" method="POST" class="pf-inline">
             <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
@@ -133,11 +135,11 @@
     </form>
   </section>
 
-  <% if (progress.completed && progress.completed.length) { %>
+  <% if (progressData.completed && progressData.completed.length) { %>
     <section class="pf-card">
       <h2 class="pf-section-title" style="margin-top:0;">Completed lessons</h2>
       <ul class="pf-lesson-list">
-        <% progress.completed.forEach(function(p) { %>
+        <% progressData.completed.forEach(function(p) { %>
           <li>
             <a href="/lesson/<%= p.slug %>">
               <% if (p.weekNumber) { %><span class="pf-badge">Week <%= p.weekNumber %></span><% } %>

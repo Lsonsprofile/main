@@ -44,6 +44,7 @@ function syncSessionUser(req, user) {
   req.session.user.email = user.email;
   req.session.user.role = user.role;
   req.session.user.avatarUrl = user.avatarUrl || '';
+  req.session.user.theme = user.theme === 'dark' ? 'dark' : 'light';
 }
 
 async function loadProgressForUser(userId) {
@@ -83,55 +84,13 @@ async function loadProgressForUser(userId) {
   };
 }
 
-async function showAccount(req, res, next) {
-  try {
-    if (!req.session.user || !isValidObjectId(req.session.user._id)) {
-      return res.redirect('/login');
-    }
-    const user = await userModel.findById(req.session.user._id);
-    if (!user) return res.redirect('/login');
-
-    syncSessionUser(req, user);
-
-    let progress = { completed: [], completedCount: 0, totalLessons: 0 };
-    try {
-      progress = await loadProgressForUser(user._id);
-    } catch (e) {
-      console.error('loadProgressForUser', e.message);
-    }
-
-    res.render('public/account', {
-      title: 'My Profile',
-      pageTitle: 'My Profile',
-      user,
-      progress,
-      success: req.query.success || null,
-      error: req.query.error || null,
-    });
-  } catch (err) {
-    next(err);
-  }
+async function showAccount(req, res) {
+  return res.redirect('/account/settings');
 }
 
 /** Admin panel profile (same data, admin chrome). */
-async function showAdminProfile(req, res, next) {
-  try {
-    if (!req.session.user || !isValidObjectId(req.session.user._id)) {
-      return res.redirect('/login');
-    }
-    const user = await userModel.findById(req.session.user._id);
-    if (!user) return res.redirect('/login');
-    syncSessionUser(req, user);
-    res.render('admin/profile', {
-      title: 'Profile',
-      pageTitle: 'Profile',
-      user,
-      success: req.query.success || null,
-      error: req.query.error || null,
-    });
-  } catch (err) {
-    next(err);
-  }
+async function showAdminProfile(req, res) {
+  return res.redirect('/account/settings');
 }
 
 async function updateAdminProfile(req, res, next) {
@@ -166,7 +125,7 @@ async function updateAccount(req, res, next) {
 
     const name = cleanString(req.body.name, 100);
     if (!name || name.length < 2) {
-      return res.redirect('/account?error=name');
+      return res.redirect('/account/settings?error=name');
     }
 
     const updates = { name };
@@ -177,10 +136,83 @@ async function updateAccount(req, res, next) {
     const user = await userModel.updateProfile(req.session.user._id, updates);
     if (user) syncSessionUser(req, user);
 
-    res.redirect('/account?success=updated');
+    res.redirect('/account/settings?success=updated');
   } catch (err) {
     if (err && err.message && /image/i.test(err.message)) {
-      return res.redirect('/account?error=image');
+      return res.redirect('/account/settings?error=image');
+    }
+    next(err);
+  }
+}
+
+async function showUserSettings(req, res, next) {
+  try {
+    if (!req.session.user || !isValidObjectId(req.session.user._id)) {
+      return res.redirect('/login');
+    }
+    const user = await userModel.findById(req.session.user._id);
+    if (!user) return res.redirect('/login');
+    syncSessionUser(req, user);
+    const theme = user.theme === 'dark' ? 'dark' : 'light';
+    let progress = { completed: [], completedCount: 0, totalLessons: 0 };
+    try {
+      progress = await loadProgressForUser(user._id);
+    } catch (e) {
+      console.error('loadProgressForUser', e.message);
+    }
+    res.render('public/user-settings', {
+      title: 'Settings',
+      pageTitle: 'Settings',
+      user,
+      theme,
+      progress,
+      success: req.query.success || null,
+      error: req.query.error || null,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function updateUserSettings(req, res, next) {
+  try {
+    if (!req.session.user || !isValidObjectId(req.session.user._id)) {
+      return res.redirect('/login');
+    }
+
+    const theme = req.body.theme === 'dark' ? 'dark' : 'light';
+    const removeAvatar = String(req.body.removeAvatar || '') === 'true';
+    const name = cleanString(req.body.name, 100);
+
+    if (name && name.length < 2) {
+      return res.redirect('/account/settings?error=name');
+    }
+
+    const updates = { theme };
+    if (name) updates.name = name;
+
+    if (removeAvatar) {
+      updates.avatarUrl = '';
+    } else if (req.file) {
+      updates.avatarUrl = '/uploads/avatars/' + req.file.filename;
+    }
+
+    const user = await userModel.updateProfile(req.session.user._id, updates);
+    if (user) syncSessionUser(req, user);
+    else if (req.session.user) {
+      req.session.user.theme = theme;
+      if (name) req.session.user.name = name;
+      if (removeAvatar) req.session.user.avatarUrl = '';
+      else if (req.file) req.session.user.avatarUrl = '/uploads/avatars/' + req.file.filename;
+    }
+
+    if (removeAvatar) {
+      return res.redirect('/account/settings?success=avatar-removed');
+    }
+    res.redirect('/account/settings?success=updated');
+  } catch (err) {
+    if (err && err.message && /image/i.test(err.message)) {
+      return res.redirect('/account/settings?error=image');
     }
     next(err);
   }
@@ -191,5 +223,7 @@ module.exports = {
   updateAccount,
   showAdminProfile,
   updateAdminProfile,
+  showUserSettings,
+  updateUserSettings,
   upload,
 };

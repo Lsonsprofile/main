@@ -1,5 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
+<%
+  var __theme = 'light';
+  if (typeof currentUser !== 'undefined' && currentUser && currentUser.theme === 'dark') __theme = 'dark';
+  else if (typeof theme !== 'undefined' && theme === 'dark') __theme = 'dark';
+%>
+<html lang="en" data-theme="<%= __theme %>">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -22,4 +27,4 @@
     <%- extraStyles %>
   <% } %>
 </head>
-<body>
+<body class="theme-<%= __theme %>">

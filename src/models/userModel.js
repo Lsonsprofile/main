@@ -37,6 +37,7 @@ async function createUser({ name, email, passwordHash, role = 'user', avatarUrl 
     passwordHash,
     role,
     avatarUrl: avatarUrl || '',
+    theme: 'light',
     createdAt: now,
     updatedAt: now,
   };
@@ -65,7 +66,7 @@ async function updateUserRole(id, role) {
   );
 }
 
-async function updateProfile(id, { name, avatarUrl }) {
+async function updateProfile(id, { name, avatarUrl, theme } = {}) {
   const db = getDb();
   if (!ObjectId.isValid(id)) return null;
   const $set = { updatedAt: new Date() };
@@ -74,6 +75,9 @@ async function updateProfile(id, { name, avatarUrl }) {
   }
   if (typeof avatarUrl === 'string') {
     $set.avatarUrl = avatarUrl;
+  }
+  if (theme === 'light' || theme === 'dark') {
+    $set.theme = theme;
   }
   const result = await db.collection('users').findOneAndUpdate(
     { _id: new ObjectId(id) },

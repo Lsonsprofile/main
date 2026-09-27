@@ -29,9 +29,9 @@ html { scroll-behavior: smooth; }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms;
+    animation-iteration-count: 1;
+    transition-duration: 0.01ms;
   }
 }
 
@@ -215,7 +215,7 @@ main { flex: 1; padding-block: 2rem; }
   font-weight: 800;
   font-size: 0.88rem;
   letter-spacing: 0.02em;
-  color: #fff !important;
+  color: #fff;
   text-decoration: none;
   background: linear-gradient(135deg, #2563eb, #4f46e5);
   box-shadow: 0 8px 18px rgba(37, 99, 235, 0.35);
@@ -225,7 +225,7 @@ main { flex: 1; padding-block: 2rem; }
 .nav-cta:focus {
   filter: brightness(1.08);
   text-decoration: none;
-  color: #fff !important;
+  color: #fff;
 }
 .nav-divider {
   display: none;
@@ -892,7 +892,7 @@ select:focus {
 .editor-icon-button { cursor: pointer; font-size: 1.1rem; line-height: 1; }
 .editor-icon-button:hover { background: #f0f5ff; }
 .editor-divider { height: 1.5rem; width: 1px; background: #dce3ee; margin: 0 0.25rem; }
-.editor-breadcrumb { margin: 0 0 0.25rem !important; font-size: 0.78rem; color: #718096 !important; }
+.editor-breadcrumb { margin: 0 0 0.25rem; font-size: 0.78rem; color: #718096; }
 .editor-breadcrumb span { padding: 0 0.35rem; }
 .editor-page-title { color: #13294b; font-size: clamp(1.5rem, 3vw, 2.35rem); }
 .admin-header {
@@ -1289,7 +1289,7 @@ select:focus {
   }
   .page-column {
     flex: 1 1 100%;
-    max-width: 100% !important;
+    max-width: 100%;
   }
 }
 
@@ -1514,10 +1514,10 @@ select:focus {
   .anim-slide-right,
   .anim-zoom-in,
   .anim-bounce {
-    animation: none !important;
+    animation: none;
   }
   .content-block {
-    transition: none !important;
+    transition: none;
   }
 }
 
@@ -1562,7 +1562,7 @@ select:focus {
   }
   .anim-on-scroll {
     opacity: 1;
-    animation: none !important;
+    animation: none;
   }
 }
 
@@ -2009,32 +2009,32 @@ select:focus {
 
 /* ---------- Full-bleed custom HTML pages ---------- */
 main.custom-html-page {
-  display: block !important;
-  width: 100% !important;
-  max-width: none !important;
-  margin: 0 !important;
-  padding: 0 !important;
+  display: block;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
   box-sizing: border-box;
 }
 .custom-html-frame-wrap {
   display: block;
-  width: 100% !important;
-  max-width: none !important;
-  margin: 0 !important;
-  padding: 0 !important;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
   box-sizing: border-box;
   line-height: 0;
 }
 .custom-html-frame {
-  display: block !important;
-  width: 100% !important;
-  max-width: none !important;
+  display: block;
+  width: 100%;
+  max-width: none;
   min-height: 100vh;
   /* Tall default so long curriculum pages are not clipped before resize message arrives */
   height: 9000px;
-  border: 0 !important;
-  margin: 0 !important;
-  padding: 0 !important;
+  border: 0;
+  margin: 0;
+  padding: 0;
   background: #fff;
   box-sizing: border-box;
   vertical-align: top;
@@ -2043,12 +2043,12 @@ main.custom-html-page {
 
 /* Footer must never stick/fixed — scrolls with the page (esp. next to embedded HTML) */
 .site-footer {
-  position: static !important;
-  bottom: auto !important;
-  top: auto !important;
-  left: auto !important;
-  right: auto !important;
-  z-index: auto !important;
+  position: static;
+  bottom: auto;
+  top: auto;
+  left: auto;
+  right: auto;
+  z-index: auto;
 }
 
 /* Custom HTML pages: do not pin footer to the viewport via body flex */
@@ -2070,15 +2070,15 @@ main.custom-html-page .custom-html-frame {
 }
 /* User access toggle (admin pages list) */
 .btn-access-on {
-  background: #d1fae5 !important;
-  color: #065f46 !important;
-  border: 1px solid #6ee7b7 !important;
+  background: #d1fae5;
+  color: #065f46;
+  border: 1px solid #6ee7b7;
   font-weight: 600;
 }
 .btn-access-off {
-  background: #fee2e2 !important;
-  color: #991b1b !important;
-  border: 1px solid #fca5a5 !important;
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fca5a5;
   font-weight: 600;
 }
 
@@ -2785,3 +2785,53 @@ body:has(main.custom-html-page):not(:has(.site-footer)) .custom-html-frame {
 .admin-main .pf-card {
   max-width: 52rem;
 }
+
+
+/* ========== User theme: light / dark ========== */
+html[data-theme="dark"] body,
+body.theme-dark {
+  --color-bg: #0b1220;
+  --color-surface: #111827;
+  --color-text: #e2e8f0;
+  --color-text-muted: #94a3b8;
+  --color-border: #334155;
+  background-color: #0b1220;
+  color: #e2e8f0;
+}
+html[data-theme="dark"] .pf-page { background: #0b1220; }
+html[data-theme="dark"] .pf-card {
+  background: #111827;
+  border-color: #1e293b;
+  box-shadow: 0 4px 24px rgba(0,0,0,.35);
+}
+html[data-theme="dark"] .pf-name,
+html[data-theme="dark"] .pf-section-title { color: #f1f5f9; }
+html[data-theme="dark"] .pf-role { color: #38bdf8; }
+html[data-theme="dark"] .pf-meta,
+html[data-theme="dark"] .pf-lead,
+html[data-theme="dark"] .pf-mini-sub,
+html[data-theme="dark"] .pf-hint { color: #94a3b8; }
+html[data-theme="dark"] .pf-stat-label { color: #64748b; }
+html[data-theme="dark"] .pf-form .form-group input {
+  background: #0f172a;
+  border-color: #334155;
+  color: #f1f5f9;
+}
+html[data-theme="dark"] .pf-form .form-group input:disabled {
+  background: #1e293b;
+  color: #94a3b8;
+}
+html[data-theme="dark"] .pf-form .form-group label { color: #cbd5e1; }
+html[data-theme="dark"] .auth-card {
+  background: #111827;
+  border-color: #334155;
+  color: #e2e8f0;
+}
+html[data-theme="dark"] .auth-card h1 { color: #f1f5f9; }
+html[data-theme="dark"] .auth-form input {
+  background: #0f172a;
+  border-color: #334155;
+  color: #f1f5f9;
+}
+html[data-theme="dark"] .container,
+html[data-theme="dark"] .admin-main { color: #e2e8f0; }

@@ -137,16 +137,29 @@
       .replace(/"/g, '&quot;');
   }
 
-  
+
   function injectHeightProbe(html) {
     html = String(html || '');
     var probe =
-      '<script>(function(){function m(){try{var h=Math.max(' +
-      'document.body?document.body.scrollHeight:0,' +
-      'document.documentElement?document.documentElement.scrollHeight:0,1200);' +
-      'if(window.parent&&window.parent!==window){window.parent.postMessage({type:"html-preview-height",height:h},"*");}' +
-      '}catch(e){}}window.addEventListener("load",function(){m();setTimeout(m,400);setTimeout(m,1200);});setInterval(m,1500);})();</scr' + 'ipt>';
-    if (/<\/body>/i.test(html)) return html.replace(/<\/body>/i, probe + '</body>');
+      '<script>(function(){function m(){try{' +
+      'var b=document.body,d=document.documentElement;' +
+      'var h=Math.max(' +
+      'b?b.scrollHeight:0,b?b.offsetHeight:0,b?b.clientHeight:0,' +
+      'd?d.scrollHeight:0,d?d.offsetHeight:0,d?d.clientHeight:0,320);' +
+      'if(window.parent&&window.parent!==window){' +
+      'window.parent.postMessage({type:"html-preview-height",height:h},"*");}' +
+      '}catch(e){}}' +
+      'window.addEventListener("load",function(){m();setTimeout(m,200);setTimeout(m,800);setTimeout(m,2000);});' +
+      'window.addEventListener("resize",m);' +
+      'if(typeof ResizeObserver!=="undefined"&&document.body){' +
+      'try{new ResizeObserver(m).observe(document.body);}catch(e){}}' +
+      'setInterval(m,2000);' +
+      '})();</scr' + 'ipt>';
+    var lower = html.toLowerCase();
+    var idx = lower.lastIndexOf('</body>');
+    if (idx !== -1) {
+      return html.slice(0, idx) + probe + html.slice(idx);
+    }
     return html + probe;
   }
 
@@ -232,24 +245,22 @@
       fresh.title = 'Isolated page preview';
       fresh.setAttribute(
         'sandbox',
-        'allow-scripts allow-same-origin allow-forms allow-modals allow-popups allow-downloads'
+        'allow-scripts allow-forms allow-modals allow-popups allow-downloads'
       );
       fresh.setAttribute('referrerpolicy', 'no-referrer');
       fresh.setAttribute('scrolling', 'yes');
-      fresh.style.cssText = 'width:100%;min-height:9000px;height:9000px;border:0;display:block;background:#fff';
+      fresh.style.cssText = 'width:100%;min-height:100vh;height:100vh;border:0;display:block;background:#fff';
 
       // Large documents (Tailwind/CDN): load from same-origin preview URL after Save
       // so scripts and full layout work reliably. Fall back to srcdoc if no page id.
-      var useUrlPreview = pageId && lastSaved && String(lastSaved).trim().length > 0;
+      // Prefer server preview URL (full document, no srcdoc size limits)
+      var useUrlPreview = Boolean(pageId);
       if (useUrlPreview) {
         fresh.src =
           '/admin/pages/' +
           encodeURIComponent(pageId) +
           '/html-preview?t=' +
           Date.now();
-      } else if (pageId && String(source).length > 80000) {
-        // Very large unsaved doc — still try srcdoc but warn
-        fresh.srcdoc = source;
       } else {
         fresh.srcdoc = source;
       }
@@ -840,9 +851,10 @@
     var frame = document.getElementById('he-preview-iframe');
     if (!frame) return;
     var h = Number(ev.data.height) || 0;
-    if (h < 400) h = 400;
-    if (h > 50000) h = 50000;
-    frame.style.height = h + 'px';
+    if (!isFinite(h) || h < 320) h = 320;
+    // No artificial max — full documents of any length can render; pane scrolls
+    frame.style.height = Math.ceil(h) + 'px';
+    frame.style.minHeight = Math.ceil(h) + 'px';
   });
 
   // Start in split mode so preview is visible immediately

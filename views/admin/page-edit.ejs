@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#0f172a">
   <meta name="csrf-token" content="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
   <link rel="stylesheet" href="/css/main.css">
-  <link rel="stylesheet" href="/css/html-editor.css?v=20">
+  <link rel="stylesheet" href="/css/html-editor.css?v=31">
 </head>
 <body class="html-editor-body">
 
@@ -152,7 +152,7 @@
           id="he-preview-iframe"
           class="he-preview-iframe"
           title="Isolated page preview"
-          sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-popups allow-downloads"
+          sandbox="allow-scripts allow-forms allow-modals allow-popups allow-downloads"
           referrerpolicy="no-referrer"
           srcdoc="<!DOCTYPE html><html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'><style>body{margin:0;display:grid;place-items:center;min-height:100vh;font-family:system-ui;background:#f1f5f9;color:#64748b}</style></head><body><p>Loading preview…</p>
 <script>
@@ -209,34 +209,35 @@
     <div class="he-instructions-body">
 
       <section class="he-help-block">
-        <h3>Save and publish your page</h3>
+        <h3>1. Save and publish</h3>
         <ol>
-          <li>Paste your full HTML here, or click <strong>Upload HTML</strong>.</li>
-          <li>Click <strong>Save</strong>. Wait until you see “Saved” with the line count.</li>
-          <li>Click <strong>Publish</strong> so the page goes live.</li>
+          <li>Paste your full HTML, or use <strong>Upload HTML</strong>.</li>
+          <li>Click <strong>Save</strong> and wait for the saved confirmation.</li>
+          <li>Set status to <strong>Published</strong> (or use Publish on the Pages list).</li>
+          <li>Use <strong>Refresh</strong> in the preview after Save for the full document.</li>
         </ol>
-        <p>The live page shows <strong>only your HTML</strong> — no extra site header or footer is added.</p>
+        <p>The live page shows <strong>only your HTML</strong> — no platform header or footer is added.</p>
       </section>
 
       <section class="he-help-block">
-        <h3>Link to this page from another page</h3>
-        <p>Copy the <strong>Page link</strong> above the editor (use <strong>Copy path</strong>).</p>
+        <h3>2. Link this page from another custom page</h3>
+        <p>Copy the <strong>Page link</strong> shown above the editor (<strong>Copy path</strong>).</p>
         <ul>
           <li>Homepage → <code>/</code></li>
           <li>Other pages → <code>/lesson/your-slug</code></li>
         </ul>
-        <p>Example to put in your HTML:</p>
-        <pre class="he-help-code">&lt;a href="/lesson/week-1"&gt;Open Week 1&lt;/a&gt;</pre>
+        <p>Example in your HTML navigation:</p>
+        <pre class="he-help-code">&lt;a href="/lesson/week-1"&gt;Open Week 1&lt;/a&gt;
+&lt;a href="/"&gt;Home&lt;/a&gt;</pre>
+        <p>Do <strong>not</strong> use <code>target="_blank"</code> unless you really want a new tab.</p>
       </section>
 
       <section class="he-help-block">
-        <h3>Show Login or Log out automatically</h3>
-        <p>The site already knows if someone is logged in. You only add a placeholder and a short script.</p>
-
-        <p><strong>Step A</strong> — Put this where you want the buttons (for example in your header):</p>
+        <h3>3. Login / Sign up / Log out in your HTML</h3>
+        <p>The server knows if someone is logged in. Add this to your page:</p>
+        <p><strong>Step A</strong> — where the buttons should appear:</p>
         <pre class="he-help-code">&lt;div id="auth-actions"&gt;&lt;/div&gt;</pre>
-
-        <p><strong>Step B</strong> — Paste this once, just before <code>&lt;/body&gt;</code>:</p>
+        <p><strong>Step B</strong> — once, just before <code>&lt;/body&gt;</code>:</p>
         <pre class="he-help-code">&lt;script&gt;
 (function () {
   function paint(auth) {
@@ -255,55 +256,46 @@
         '&lt;a href="/register"&gt;Sign up&lt;/a&gt;';
     }
   }
-
-  // 1) Instant paint from server-injected window.__AUTH__
   paint(window.__AUTH__);
-
-  // 2) Double-check with the server (handles cache / timing)
   fetch('/api/me', { credentials: 'same-origin' })
     .then(function (r) { return r.json(); })
-    .then(function (data) { paint(data); })
+    .then(paint)
     .catch(function () {});
 })();
 &lt;/script&gt;</pre>
-        <p>The site injects login state into the page <strong>before</strong> your scripts run. The extra <code>/api/me</code> check confirms it with the server.</p>
-
-        <p><strong>Result:</strong></p>
+        <p><strong>Or</strong> hard-code links anytime:</p>
         <ul>
-          <li>Visitor not logged in → <strong>Login</strong> and <strong>Sign up</strong></li>
-          <li>Logged in → <strong>Hi, name</strong> and <strong>Log out</strong></li>
-        </ul>
-        <p>Useful links you can also hard-code:</p>
-        <ul>
-          <li><code>/login</code> · <code>/register</code> · <code>/logout</code> · <code>/account</code></li>
+          <li><code>/login</code> · <code>/register</code> · <code>/logout</code></li>
+          <li><code>/account/settings</code> — My account (profile, photo, light/dark)</li>
         </ul>
       </section>
 
       <section class="he-help-block">
-        <h3>Live chat on custom pages</h3>
-        <p>When someone is <strong>logged in</strong>, a floating <strong>Chat</strong> button appears (bottom-left). Admin and learners can both use it.</p>
+        <h3>4. Features added automatically (do not paste these)</h3>
         <ul>
-          <li>It is added by the server — not stored in your HTML.</li>
-          <li>Visitors who are not logged in do not see chat.</li>
-          <li>Chat is shared for that page (everyone on the same page can talk).</li>
+          <li><strong>Chat</strong> (bottom-left) — logged-in users only</li>
+          <li><strong>Mark complete</strong> (bottom-center) — tracks progress for logged-in users</li>
+          <li><strong>Settings</strong> button (bottom-right) — learners → My account</li>
+          <li><strong>Dashboard</strong> button (bottom-right) — admins only</li>
+        </ul>
+        <p>These are injected by the server. They are <strong>not</strong> stored in your HTML.</p>
+      </section>
+
+      <section class="he-help-block">
+        <h3>5. Who can open the page</h3>
+        <p>In <strong>Page settings</strong> (drawer above the editor):</p>
+        <ul>
+          <li><strong>User access ON</strong> — students can open the published page</li>
+          <li><strong>User access OFF</strong> — only admin can see it</li>
         </ul>
       </section>
 
       <section class="he-help-block">
-        <h3>Back to the admin Dashboard</h3>
-        <p>When you are logged in as <strong>admin</strong>, a floating <strong>Dashboard</strong> button appears at the bottom-right of every live custom page.</p>
-        <ul>
-          <li>Only admins see it — normal visitors do not.</li>
-          <li>It is added by the server. It is <strong>not</strong> part of your saved HTML, so it will not break your layout.</li>
-        </ul>
-      </section>
-
-      <section class="he-help-block">
-        <h3>Preview tips</h3>
+        <h3>6. Preview tips</h3>
         <ol>
-          <li>Use <strong>Split</strong> or <strong>Preview</strong>, then click <strong>Refresh</strong>.</li>
-          <li>Scroll inside the preview panel for long pages.</li>
-          <li>Save first if the preview looks incomplete.</li>
+          <li><strong>Save</strong> first, then <strong>Refresh</strong> preview for long pages.</li>
+          <li>Scroll inside the preview panel to see the full document.</li>
+          <li>Use Desktop / Tablet / Mobile to check layout.</li>
         </ol>
       </section>
 
@@ -348,6 +340,6 @@
 })();
 </script>
 
-<script src="/js/html-editor.js?v=20"></script>
+<script src="/js/html-editor.js?v=31"></script>
 </body>
 </html>

@@ -9,7 +9,7 @@
       <li><a href="/admin/pages" class="admin-nav-link <%= currentPath === '/admin/pages' || (currentPath && currentPath.indexOf('/admin/pages') === 0 && !(typeof page !== 'undefined' && page && page.slug === 'home')) ? 'active' : '' %>"><span aria-hidden="true">▣</span><span>Pages</span></a></li>
       <li><a href="/admin/users" class="admin-nav-link <%= currentPath === '/admin/users' || (currentPath && currentPath.indexOf('/admin/users') === 0) ? 'active' : '' %>"><span aria-hidden="true">👤</span><span>Users</span></a></li>
       <li><a href="/admin/settings" class="admin-nav-link <%= currentPath === '/admin/settings' ? 'active' : '' %>"><span aria-hidden="true">⚙</span><span>Settings</span></a></li>
-      <li><a href="/admin/profile" class="admin-nav-link <%= currentPath === '/admin/profile' || currentPath === '/account' ? 'active' : '' %>"><span aria-hidden="true">◎</span><span>Profile</span></a></li>
+      <li><a href="/account/settings" class="admin-nav-link <%= currentPath === '/account/settings' || currentPath === '/account' ? 'active' : '' %>"><span aria-hidden="true">◎</span><span>My account</span></a></li>
       <li><a href="/" class="admin-nav-link"><span aria-hidden="true">◉</span><span>Preview Site</span></a></li>
       <li>
         <form action="/logout" method="POST" class="inline-form">
