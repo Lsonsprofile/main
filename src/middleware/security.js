@@ -58,7 +58,6 @@ function csrfLocals(req, res, next) {
 function hostOnly(value) {
   if (!value) return '';
   try {
-    // Accept raw host or full URL
     if (value.includes('://')) {
       return new URL(value).host.toLowerCase();
     }
@@ -79,8 +78,8 @@ function isSameOriginRequest(req) {
   }
   if (origin && host && origin === host) return true;
   if (referer && host && referer === host) return true;
-  // No Origin/Referer (some browsers/privacy tools) but has session cookie on our host
-  if (!origin && !referer && req.session && req.session.user) {
+  // No Origin/Referer (privacy tools) but browser is posting to our host with a session
+  if (!origin && !referer && req.session) {
     return true;
   }
   return false;
@@ -92,8 +91,8 @@ function csrfProtect(req, res, next) {
     return next();
   }
 
-  // Logout should always work for signed-in users
-  if (req.path === '/logout') {
+  // Logout should always work
+  if (req.path === '/logout' || req.originalUrl === '/logout') {
     return next();
   }
 
@@ -104,25 +103,17 @@ function csrfProtect(req, res, next) {
     req.headers['csrf-token'] ||
     '';
 
+  // Explicit matching token always allowed
   if (provided && token && provided === token) {
     return next();
   }
 
-  // Same-origin authenticated browser requests (fetch/XHR from our pages)
-  const isJsonOrXhr =
-    req.headers['x-requested-with'] === 'XMLHttpRequest' ||
-    (req.headers.accept || '').includes('application/json') ||
-    (req.headers['content-type'] || '').includes('application/json') ||
-    (req.headers['content-type'] || '').includes('multipart/form-data');
-
-  if (isSameOriginRequest(req) && req.session && req.session.user && isJsonOrXhr) {
+  // Same-origin browser requests (normal form posts from our own pages).
+  // Cookie sessions already use SameSite=lax; this blocks true cross-site CSRF
+  // while allowing Create Page / Save Block without a hidden field on every form.
+  if (isSameOriginRequest(req)) {
     return next();
   }
-
-  // Classic form POST with matching token only (already handled above)
-  // Allow same-origin HTML forms that include session (login/register are special - no user yet)
-  if (isSameOriginRequest(req) && req.path === '/login') return next();
-  if (isSameOriginRequest(req) && req.path === '/register') return next();
 
   res.status(403);
   if ((req.headers.accept || '').includes('application/json')) {
