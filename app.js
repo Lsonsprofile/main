@@ -69,21 +69,25 @@ app.set('views', path.join(__dirname, 'views'));
 // ---------------------------------------------------------------------------
 // Session configuration (must come before any routes that use req.session)
 // ---------------------------------------------------------------------------
+// secure cookies only when COOKIE_SECURE=true (HTTPS / Render).
+// NODE_ENV=production on http://localhost would otherwise drop the session cookie.
+const useSecureCookies =
+  process.env.COOKIE_SECURE === 'true' ||
+  process.env.COOKIE_SECURE === '1';
+
 const sessionMiddleware = session({
-  name: 'webdev.sid', // custom name instead of default connect.sid
+  name: 'webdev.sid',
   secret: process.env.SESSION_SECRET || 'dev-only-insecure-secret-change-me',
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: process.env.NODE_ENV === 'production',
+    secure: useSecureCookies,
     httpOnly: true,
     sameSite: 'lax',
     maxAge: 1000 * 60 * 60 * 24 * 7,
     path: '/',
   },
   proxy: process.env.NODE_ENV === 'production',
-  // Note: For production we will later add a Mongo-backed session store.
-  // For now the default MemoryStore is acceptable in development.
 });
 app.use(sessionMiddleware);
 app.use(csrfLocals);
