@@ -14,7 +14,13 @@
   <% } else { %>
   <meta name="description" content="Progressive 36-week web development curriculum. Learn HTML, CSS, and JavaScript with structured lessons.">
   <% } %>
-  <meta name="theme-color" content="#1a56db">
+  <meta name="theme-color" content="<%= __theme === 'dark' ? '#0b1220' : '#1a56db' %>">
+  <script>
+    try {
+      document.documentElement.setAttribute('data-theme', '<%= __theme %>');
+      document.documentElement.style.colorScheme = '<%= __theme === "dark" ? "dark" : "light" %>';
+    } catch (e) {}
+  </script>
   <meta property="og:title" content="<%= typeof title !== 'undefined' ? title : 'Web Development Learning Platform' %>">
   <meta property="og:description" content="<%= typeof seoDescription !== 'undefined' && seoDescription ? seoDescription : 'Progressive 36-week web development curriculum.' %>">
   <meta property="og:type" content="website">
@@ -23,6 +29,7 @@
   <% } %>
   <link rel="stylesheet" href="/css/main.css">
   <link rel="stylesheet" href="/css/admin-mobile.css">
+  <link rel="stylesheet" href="/css/theme-dark.css">
   <% if (typeof extraStyles !== 'undefined') { %>
     <%- extraStyles %>
   <% } %>
