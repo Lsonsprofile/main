@@ -1,4 +1,5 @@
 /* Admin + account responsive helpers */
+
 @media (max-width: 900px) {
   .admin-layout { flex-direction: column; min-height: auto; }
   .admin-sidebar {
@@ -40,9 +41,17 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.75rem;
   }
-  .table-wrap { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .table-wrap {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
   .admin-table { min-width: 640px; }
-  .admin-table .actions { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+  .admin-table .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+  }
   .admin-form .form-group input,
   .admin-form .form-group textarea,
   .admin-form .form-group select {
@@ -58,17 +67,22 @@
   .stat-number { font-size: 1.35rem; }
   .admin-page-header h1,
   .admin-header h1 { font-size: 1.25rem; }
+  .stats-grid { grid-template-columns: 1fr; }
 }
 
-/* Account page overflow on small screens */
 .acct { max-width: 100%; overflow-x: hidden; }
-.acct-name, .acct-role, .acct-hint, .acct-list li { overflow-wrap: anywhere; word-break: break-word; }
+.acct-name, .acct-role, .acct-hint, .acct-list li {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 @media (max-width: 640px) {
   .acct { padding: 0.75rem 0.65rem 2rem; }
-  .acct-grid { grid-template-columns: 1fr !important; display: block !important; }
-  .acct-card { max-width: 100%; overflow: hidden; }
-  .acct-top { flex-direction: column !important; align-items: flex-start !important; }
+  .acct-grid { display: block; grid-template-columns: 1fr; }
+  .acct-card { max-width: 100%; overflow: hidden; margin-bottom: 1rem; }
+  .acct-top { flex-direction: column; align-items: flex-start; }
   .acct-stats { width: 100%; flex-wrap: wrap; }
-  .acct-actions { flex-direction: column !important; }
-  .acct-actions a, .acct-actions button { width: 100%; }
+  .acct-actions { flex-direction: column; }
+  .acct-actions a,
+  .acct-actions button { width: 100%; }
 }
