@@ -162,40 +162,169 @@ function buildChatWidget(req, page) {
   const user = sessionUser(req);
   if (!user) return '';
   const pageId = page?._id ? escapeAttr(String(page._id)) : '';
+  const userName = escapeAttr(user.name || 'You');
+
   return `
 <style id="platform-chat-style">
-#platform-chat-root{position:fixed;bottom:1.25rem;left:1.25rem;z-index:2147483646;font-family:system-ui,sans-serif}
-#platform-chat-toggle{display:inline-flex;align-items:center;gap:.4rem;padding:.7rem 1.1rem;border-radius:999px;border:0;cursor:pointer;background:#0ea5e9;color:#fff;font:700 .85rem/1 system-ui,sans-serif;box-shadow:0 8px 24px rgba(14,165,233,.45);position:relative}
-#platform-chat-badge{display:none;position:absolute;top:-6px;right:-6px;min-width:1.25rem;height:1.25rem;padding:0 .35rem;border-radius:999px;background:#ef4444;color:#fff;font:700 .65rem/1.25rem system-ui,sans-serif;text-align:center}
+#platform-chat-root{
+  position:fixed;bottom:1.25rem;left:1.25rem;z-index:2147483646;
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  display:flex;flex-direction:column;align-items:flex-start;gap:.55rem;
+}
+#platform-chat-toggle{
+  display:inline-flex;align-items:center;gap:.5rem;
+  padding:.7rem 1.15rem .7rem 1rem;border-radius:999px;border:0;cursor:pointer;
+  background:linear-gradient(135deg,#0ea5e9,#2563eb);color:#fff;
+  font:700 .85rem/1 system-ui,sans-serif;
+  box-shadow:0 10px 28px rgba(37,99,235,.4);
+  transition:transform .15s ease,box-shadow .15s ease;
+  position:relative;
+}
+#platform-chat-toggle:hover{transform:translateY(-2px);box-shadow:0 14px 32px rgba(37,99,235,.5)}
+#platform-chat-toggle:active{transform:translateY(0)}
+#platform-chat-toggle svg{width:1.1rem;height:1.1rem;flex-shrink:0}
+#platform-chat-badge{
+  display:none;position:absolute;top:-5px;right:-5px;min-width:1.2rem;height:1.2rem;
+  padding:0 .35rem;border-radius:999px;background:#ef4444;color:#fff;
+  font:700 .65rem/1.2rem system-ui,sans-serif;text-align:center;
+  border:2px solid #fff;box-shadow:0 2px 8px rgba(239,68,68,.4);
+}
 #platform-chat-badge.is-on{display:inline-block}
-#platform-chat-panel{flex-direction:column;width:min(20rem,calc(100vw - 2rem));height:22rem;margin-bottom:.55rem;background:#0f172a;color:#f8fafc;border-radius:14px;border:1px solid rgba(255,255,255,.12);box-shadow:0 16px 40px rgba(15,23,42,.5);overflow:hidden}
-#platform-chat-head{display:flex;align-items:center;justify-content:space-between;padding:.75rem .85rem;border-bottom:1px solid rgba(255,255,255,.08);background:#111827}
-#platform-chat-status{font-size:.7rem;font-weight:700;color:#94a3b8}
-#platform-chat-close{border:0;background:transparent;color:#94a3b8;font-size:1.25rem;cursor:pointer;line-height:1}
-#platform-chat-log{flex:1;overflow:auto;padding:.75rem;display:flex;flex-direction:column;gap:.55rem;background:#0b1220}
-.platform-chat-msg{background:#1e293b;border-radius:10px;padding:.5rem .65rem}
-.platform-chat-msg strong{display:block;font-size:.72rem;color:#7dd3fc;margin-bottom:.2rem}
-.platform-chat-msg span{font-size:.8rem;line-height:1.35;word-break:break-word}
-#platform-chat-form{display:flex;gap:.4rem;padding:.65rem;border-top:1px solid rgba(255,255,255,.08);background:#1e293b}
-#platform-chat-input{flex:1;border-radius:8px;border:1px solid #334155;background:#0b1220;color:#f8fafc;padding:.5rem .65rem;font:500 .8rem/1.2 system-ui,sans-serif}
-#platform-chat-send{border:0;border-radius:8px;background:#22c55e;color:#052e16;font:700 .75rem/1 system-ui,sans-serif;padding:.5rem .75rem;cursor:pointer}
-#platform-chat-err{color:#fca5a5;font-size:.7rem;padding:0 .65rem .5rem}
+#platform-chat-panel{
+  width:min(22rem,calc(100vw - 1.75rem));height:26rem;
+  display:none;flex-direction:column;
+  background:#0b1220;color:#f1f5f9;border-radius:18px;
+  border:1px solid rgba(148,163,184,.18);
+  box-shadow:0 24px 56px rgba(2,6,23,.55),0 0 0 1px rgba(255,255,255,.04) inset;
+  overflow:hidden;
+  animation:pcIn .18s ease;
+}
+@keyframes pcIn{from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:none}}
+#platform-chat-head{
+  display:flex;align-items:center;justify-content:space-between;gap:.75rem;
+  padding:.85rem 1rem;
+  background:linear-gradient(180deg,#111827 0%,#0f172a 100%);
+  border-bottom:1px solid rgba(148,163,184,.12);
+}
+#platform-chat-head-left{display:flex;align-items:center;gap:.65rem;min-width:0}
+#platform-chat-avatar{
+  width:2.1rem;height:2.1rem;border-radius:50%;
+  background:linear-gradient(135deg,#38bdf8,#6366f1);
+  display:grid;place-items:center;font:800 .75rem/1 system-ui,sans-serif;color:#fff;
+  flex-shrink:0;box-shadow:0 0 0 2px rgba(56,189,248,.25);
+}
+#platform-chat-title{font:800 .9rem/1.2 system-ui,sans-serif;color:#f8fafc;margin:0}
+#platform-chat-status{
+  font:600 .68rem/1.2 system-ui,sans-serif;color:#94a3b8;margin:.15rem 0 0;
+  display:inline-flex;align-items:center;gap:.3rem;
+}
+#platform-chat-status::before{
+  content:"";width:.45rem;height:.45rem;border-radius:50%;background:#64748b;
+}
+#platform-chat-status[data-state="online"]{color:#4ade80}
+#platform-chat-status[data-state="online"]::before{background:#22c55e;box-shadow:0 0 0 3px rgba(34,197,94,.2)}
+#platform-chat-status[data-state="offline"]{color:#f87171}
+#platform-chat-status[data-state="offline"]::before{background:#ef4444}
+#platform-chat-close{
+  border:0;background:rgba(148,163,184,.1);color:#94a3b8;
+  width:1.85rem;height:1.85rem;border-radius:50%;cursor:pointer;
+  font-size:1.1rem;line-height:1;display:grid;place-items:center;
+  transition:background .12s,color .12s;
+}
+#platform-chat-close:hover{background:rgba(248,113,113,.15);color:#fca5a5}
+#platform-chat-log{
+  flex:1;overflow:auto;padding:.85rem .9rem;
+  display:flex;flex-direction:column;gap:.65rem;
+  background:radial-gradient(ellipse at top left,rgba(56,189,248,.06),transparent 50%),#0b1220;
+  scroll-behavior:smooth;
+}
+#platform-chat-log::-webkit-scrollbar{width:6px}
+#platform-chat-log::-webkit-scrollbar-thumb{background:#334155;border-radius:999px}
+.platform-chat-msg{
+  background:#1e293b;border-radius:14px 14px 14px 4px;
+  padding:.55rem .75rem;max-width:92%;
+  border:1px solid rgba(148,163,184,.08);
+  animation:pcMsg .15s ease;
+}
+@keyframes pcMsg{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.platform-chat-msg strong{
+  display:block;font-size:.7rem;font-weight:700;color:#7dd3fc;
+  margin-bottom:.2rem;letter-spacing:.01em;
+}
+.platform-chat-msg span{
+  font-size:.82rem;line-height:1.4;color:#e2e8f0;word-break:break-word;white-space:pre-wrap;
+}
+#platform-chat-empty{
+  margin:auto;text-align:center;color:#64748b;font-size:.8rem;padding:1.5rem;
+}
+#platform-chat-err{
+  color:#fecaca;font-size:.72rem;padding:.35rem .9rem .15rem;
+  background:rgba(127,29,29,.25);
+}
+#platform-chat-err[hidden]{display:none}
+#platform-chat-form{
+  display:flex;gap:.45rem;padding:.7rem .75rem .8rem;
+  border-top:1px solid rgba(148,163,184,.12);
+  background:#111827;
+}
+#platform-chat-input{
+  flex:1;border-radius:12px;border:1px solid #334155;
+  background:#0b1220;color:#f8fafc;
+  padding:.6rem .8rem;font:500 .85rem/1.25 system-ui,sans-serif;
+  outline:none;transition:border-color .12s,box-shadow .12s;
+}
+#platform-chat-input::placeholder{color:#64748b}
+#platform-chat-input:focus{
+  border-color:#38bdf8;
+  box-shadow:0 0 0 3px rgba(56,189,248,.15);
+}
+#platform-chat-send{
+  border:0;border-radius:12px;
+  background:linear-gradient(135deg,#22c55e,#16a34a);color:#052e16;
+  font:800 .78rem/1 system-ui,sans-serif;
+  padding:.6rem .95rem;cursor:pointer;
+  box-shadow:0 4px 12px rgba(34,197,94,.25);
+  transition:transform .12s,filter .12s;
+}
+#platform-chat-send:hover{filter:brightness(1.06);transform:translateY(-1px)}
+#platform-chat-send:active{transform:none}
+@media (max-width:480px){
+  #platform-chat-root{left:.75rem;right:.75rem;bottom:.85rem;align-items:stretch}
+  #platform-chat-panel{width:100%;height:min(28rem,70vh)}
+  #platform-chat-toggle{align-self:flex-start}
+}
 @media print{#platform-chat-root{display:none}}
 </style>
-<div id="platform-chat-root" data-page-id="${pageId}">
-  <div id="platform-chat-panel" style="display:none">
+<div id="platform-chat-root" data-page-id="${pageId}" data-user="${userName}">
+  <div id="platform-chat-panel" role="dialog" aria-label="Live chat">
     <div id="platform-chat-head">
-      <div><strong>Live chat</strong> <span id="platform-chat-status" data-state="offline">…</span></div>
-      <button type="button" id="platform-chat-close" aria-label="Close" onclick="var p=document.getElementById('platform-chat-panel');if(p)p.style.display='none';">×</button>
+      <div id="platform-chat-head-left">
+        <div id="platform-chat-avatar">💬</div>
+        <div>
+          <p id="platform-chat-title">Live chat</p>
+          <p id="platform-chat-status" data-state="offline">Connecting…</p>
+        </div>
+      </div>
+      <button type="button" id="platform-chat-close" aria-label="Close"
+        onclick="var p=document.getElementById('platform-chat-panel');if(p)p.style.display='none';">×</button>
     </div>
-    <div id="platform-chat-log"></div>
+    <div id="platform-chat-log">
+      <div id="platform-chat-empty">No messages yet.<br>Say hello 👋</div>
+    </div>
     <div id="platform-chat-err" hidden></div>
     <form id="platform-chat-form" action="javascript:void(0)" method="post" autocomplete="off" onsubmit="return false;">
-      <input id="platform-chat-input" type="text" maxlength="500" placeholder="Message…" autocomplete="off">
+      <input id="platform-chat-input" type="text" maxlength="500" placeholder="Type a message…" autocomplete="off">
       <button type="submit" id="platform-chat-send">Send</button>
     </form>
   </div>
-  <button type="button" id="platform-chat-toggle" aria-expanded="false" onclick="var p=document.getElementById('platform-chat-panel');if(!p)return false;var o=p.style.display==='flex';p.style.display=o?'none':'flex';p.style.flexDirection='column';this.setAttribute('aria-expanded',o?'false':'true');return false;">Chat <span id="platform-chat-badge">0</span></button>
+  <button type="button" id="platform-chat-toggle" aria-expanded="false"
+    onclick="var p=document.getElementById('platform-chat-panel');if(!p)return false;var o=p.style.display==='flex';p.style.display=o?'none':'flex';p.style.flexDirection='column';this.setAttribute('aria-expanded',o?'false':'true');if(!o){var i=document.getElementById('platform-chat-input');if(i)try{i.focus()}catch(e){}}return false;">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/>
+    </svg>
+    Chat
+    <span id="platform-chat-badge">0</span>
+  </button>
 </div>
 <script src="/socket.io/socket.io.js"><\/script>
 <script>(function(){
@@ -207,20 +336,59 @@ function buildChatWidget(req, page) {
   var badge=document.getElementById("platform-chat-badge");
   var status=document.getElementById("platform-chat-status");
   var errEl=document.getElementById("platform-chat-err");
+  var empty=document.getElementById("platform-chat-empty");
   var pageId=root.getAttribute("data-page-id")||"";
   var socket=null,unread=0;
+
   function esc(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
   function showErr(t){if(!errEl)return;if(!t){errEl.hidden=true;errEl.textContent="";return;}errEl.hidden=false;errEl.textContent=t;}
   function setStatus(state,label){if(!status)return;status.setAttribute("data-state",state);status.textContent=label;}
   function isOpen(){return panel&&panel.style.display==="flex";}
-  function addMsg(m){if(!log||!m)return;var d=document.createElement("div");d.className="platform-chat-msg";d.innerHTML="<strong>"+esc(m.userName||m.name||"User")+"</strong><span>"+esc(m.body||"")+"</span>";log.appendChild(d);log.scrollTop=log.scrollHeight;}
-  if(form){form.addEventListener("submit",function(e){e.preventDefault();e.stopPropagation();var body=(input&&input.value||"").trim();if(!body)return false;if(!socket||!socket.connected){showErr("Chat offline — wait for Online");return false;}socket.emit("chat:message",{pageId:pageId,body:body},function(res){if(!res||!res.ok){showErr((res&&res.error)||"Send failed");return;}showErr("");if(input)input.value="";if(res.message)addMsg(res.message);});return false;});}
+  function hideEmpty(){if(empty)empty.style.display="none";}
+  function addMsg(m){
+    if(!log||!m)return;
+    hideEmpty();
+    var d=document.createElement("div");
+    d.className="platform-chat-msg";
+    d.innerHTML="<strong>"+esc(m.userName||m.name||"User")+"</strong><span>"+esc(m.body||"")+"</span>";
+    log.appendChild(d);
+    log.scrollTop=log.scrollHeight;
+  }
+
+  if(form){
+    form.addEventListener("submit",function(e){
+      e.preventDefault();e.stopPropagation();
+      var body=(input&&input.value||"").trim();if(!body)return false;
+      if(!socket||!socket.connected){showErr("Chat offline — wait for Online");return false;}
+      socket.emit("chat:message",{pageId:pageId,body:body},function(res){
+        if(!res||!res.ok){showErr((res&&res.error)||"Send failed");return;}
+        showErr("");if(input)input.value="";if(res.message)addMsg(res.message);
+      });
+      return false;
+    });
+  }
+
   if(typeof io==="undefined"){setStatus("offline","Offline");return;}
   socket=io({path:"/socket.io",withCredentials:true,transports:["websocket","polling"]});
-  socket.on("connect",function(){setStatus("online","Online");showErr("");socket.emit("chat:join",{pageId:pageId},function(res){if(res&&res.ok&&res.history){(res.history||[]).forEach(addMsg);}});});
+  socket.on("connect",function(){
+    setStatus("online","Online");
+    showErr("");
+    socket.emit("chat:join",{pageId:pageId},function(res){
+      if(res&&res.ok&&res.history&&res.history.length){
+        hideEmpty();
+        (res.history||[]).forEach(addMsg);
+      }
+    });
+  });
   socket.on("disconnect",function(){setStatus("offline","Offline");});
   socket.on("connect_error",function(){setStatus("offline","Offline");});
-  socket.on("chat:message",function(m){addMsg(m);if(!isOpen()){unread+=1;if(badge){badge.textContent=String(unread);badge.classList.add("is-on");badge.style.display="inline-block";}}});
+  socket.on("chat:message",function(m){
+    addMsg(m);
+    if(!isOpen()){
+      unread+=1;
+      if(badge){badge.textContent=String(unread);badge.classList.add("is-on");}
+    }
+  });
 })();<\/script>`;
 }
 
