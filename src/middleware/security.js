@@ -105,18 +105,14 @@ function csrfProtect(req, res, next) {
     return next();
   }
 
-  const isJsonOrXhr =
-    req.headers['x-requested-with'] === 'XMLHttpRequest' ||
-    (req.headers.accept || '').includes('application/json') ||
-    (req.headers['content-type'] || '').includes('application/json') ||
-    (req.headers['content-type'] || '').includes('multipart/form-data');
-
-  if (isSameOriginRequest(req) && req.session && req.session.user && isJsonOrXhr) {
+  // Logged-in same-origin browser (HTML forms + fetch)
+  if (isSameOriginRequest(req) && req.session && req.session.user) {
     return next();
   }
 
-  if (isSameOriginRequest(req) && req.path === '/login') return next();
-  if (isSameOriginRequest(req) && req.path === '/register') return next();
+  if (isSameOriginRequest(req) && (req.path === '/login' || req.path === '/register')) {
+    return next();
+  }
 
   res.status(403);
   if ((req.headers.accept || '').includes('application/json')) {
