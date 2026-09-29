@@ -15,7 +15,6 @@
   <meta name="description" content="Progressive 36-week web development curriculum. Learn HTML, CSS, and JavaScript with structured lessons.">
   <% } %>
   <meta name="theme-color" content="#1a56db">
-  <!-- Open Graph -->
   <meta property="og:title" content="<%= typeof title !== 'undefined' ? title : 'Web Development Learning Platform' %>">
   <meta property="og:description" content="<%= typeof seoDescription !== 'undefined' && seoDescription ? seoDescription : 'Progressive 36-week web development curriculum.' %>">
   <meta property="og:type" content="website">
@@ -23,6 +22,7 @@
   <link rel="canonical" href="/lesson/<%= page.slug %>">
   <% } %>
   <link rel="stylesheet" href="/css/main.css">
+  <link rel="stylesheet" href="/css/admin-mobile.css">
   <% if (typeof extraStyles !== 'undefined') { %>
     <%- extraStyles %>
   <% } %>

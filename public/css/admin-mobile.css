@@ -1,0 +1,75 @@
+/* Admin + account responsive helpers */
+@media (max-width: 900px) {
+  .admin-layout { flex-direction: column; min-height: auto; }
+  .admin-sidebar {
+    width: 100%;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    border-right: 0;
+    border-bottom: 1px solid #e2e8f0;
+  }
+  .admin-nav-list {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 0.35rem;
+    padding: 0.5rem 0.75rem 0.75rem;
+    -webkit-overflow-scrolling: touch;
+  }
+  .admin-nav-list li { flex: 0 0 auto; }
+  .admin-nav-link {
+    white-space: nowrap;
+    padding: 0.45rem 0.7rem;
+    border-radius: 999px;
+    font-size: 0.8rem;
+  }
+  .admin-main {
+    width: 100%;
+    padding: 1rem 0.85rem 2rem;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+  .admin-page-header,
+  .admin-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+  .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+  .table-wrap { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .admin-table { min-width: 640px; }
+  .admin-table .actions { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+  .admin-form .form-group input,
+  .admin-form .form-group textarea,
+  .admin-form .form-group select {
+    max-width: 100%;
+    width: 100%;
+    box-sizing: border-box;
+  }
+}
+
+@media (max-width: 560px) {
+  .admin-main { padding: 0.85rem 0.65rem 2rem; }
+  .stat-card { padding: 0.85rem; }
+  .stat-number { font-size: 1.35rem; }
+  .admin-page-header h1,
+  .admin-header h1 { font-size: 1.25rem; }
+}
+
+@media (max-width: 640px) {
+  .acct { padding: 0.85rem 0.75rem 2rem; }
+  .acct-top { flex-direction: column; align-items: flex-start; }
+  .acct-stats { width: 100%; justify-content: space-between; }
+  .acct-grid { grid-template-columns: 1fr !important; }
+  .acct-actions { flex-direction: column; align-items: stretch; }
+  .acct-actions .acct-btn-primary,
+  .acct-actions .acct-btn-ghost {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+  }
+}
