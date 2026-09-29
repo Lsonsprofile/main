@@ -113,13 +113,14 @@ function buildChatWidget(req, page) {
   return (
     '<style id="platform-chat-style">' +
     '#platform-chat-root{position:fixed!important;bottom:1.25rem!important;left:1.25rem!important;z-index:2147483646!important;font-family:system-ui,sans-serif!important}' +
-    '#platform-chat-toggle{display:inline-flex!important;align-items:center;gap:0.45rem;padding:0.7rem 1.1rem;border-radius:999px;border:0;cursor:pointer;background:#0ea5e9!important;color:#fff!important;font:700 0.85rem/1 system-ui,sans-serif!important;box-shadow:0 8px 24px rgba(14,165,233,.45);position:relative}' +
-    '#platform-chat-badge{display:none;position:absolute;top:-6px;right:-6px;min-width:1.25rem;height:1.25rem;padding:0 0.35rem;border-radius:999px;background:#ef4444;color:#fff;font:700 0.65rem/1.25rem system-ui,sans-serif;text-align:center}' +
+    '#platform-chat-toggle{display:inline-flex!important;align-items:center;gap:0.4rem;padding:0.7rem 1.1rem;border-radius:999px;border:0!important;cursor:pointer!important;' +
+    'background:#0ea5e9!important;color:#fff!important;font:700 0.85rem/1 system-ui,sans-serif!important;box-shadow:0 8px 24px rgba(14,165,233,.45)!important}' +
+    '#platform-chat-badge{display:none;position:absolute;top:-6px;right:-6px;min-width:1.25rem;height:1.25rem;padding:0 0.35rem;border-radius:999px;background:#ef4444;color:#fff;font:700 0.65rem/1.25rem system-ui,sans-serif}' +
     '#platform-chat-badge.is-on{display:inline-block!important}' +
     '#platform-chat-panel{flex-direction:column;width:min(20rem,calc(100vw - 2rem));height:22rem;margin-bottom:0.55rem;background:#0f172a!important;color:#f8fafc!important;border-radius:14px;border:1px solid rgba(255,255,255,.12);box-shadow:0 16px 40px rgba(15,23,42,.5);overflow:hidden}' +
     '#platform-chat-head{display:flex;align-items:center;justify-content:space-between;padding:0.75rem 0.85rem;border-bottom:1px solid rgba(255,255,255,.08);background:#111827!important}' +
     '#platform-chat-status{font-size:0.7rem;font-weight:700;color:#94a3b8}' +
-    '#platform-chat-close{border:0;background:transparent;color:#94a3b8;font-size:1.2rem;cursor:pointer;line-height:1}' +
+    '#platform-chat-close{border:0;background:transparent;color:#94a3b8;font-size:1.25rem;cursor:pointer;line-height:1}' +
     '#platform-chat-log{flex:1;overflow:auto;padding:0.75rem;display:flex;flex-direction:column;gap:0.55rem;background:#0b1220}' +
     '.platform-chat-msg{background:#1e293b;border-radius:10px;padding:0.5rem 0.65rem}' +
     '.platform-chat-msg strong{display:block;font-size:0.72rem;color:#7dd3fc;margin-bottom:0.2rem}' +
@@ -133,49 +134,48 @@ function buildChatWidget(req, page) {
     '<div id="platform-chat-root" data-page-id="' + escapeAttr(pageId) + '">' +
     '<div id="platform-chat-panel" style="display:none">' +
     '<div id="platform-chat-head"><div><strong>Live chat</strong> <span id="platform-chat-status" data-state="offline">…</span></div>' +
-    '<button type="button" id="platform-chat-close" aria-label="Close">×</button></div>' +
+    '<button type="button" id="platform-chat-close" aria-label="Close" ' +
+    'onclick="var p=document.getElementById("platform-chat-panel");if(p)p.style.display="none";">×</button></div>' +
     '<div id="platform-chat-log"></div><div id="platform-chat-err" hidden></div>' +
     '<form id="platform-chat-form" action="javascript:void(0)" method="post" autocomplete="off" onsubmit="return false;">' +
     '<input id="platform-chat-input" type="text" maxlength="500" placeholder="Message…" autocomplete="off">' +
     '<button type="submit" id="platform-chat-send">Send</button></form></div>' +
-    '<button type="button" id="platform-chat-toggle" aria-expanded="false">Chat <span id="platform-chat-badge">0</span></button></div>' +
+    '<button type="button" id="platform-chat-toggle" aria-expanded="false" ' +
+    'onclick="var p=document.getElementById("platform-chat-panel");if(!p)return false;' +
+    'var open=p.style.display==="flex";p.style.display=open?"none":"flex";' +
+    'p.style.flexDirection="column";this.setAttribute("aria-expanded",open?"false":"true");return false;">' +
+    'Chat <span id="platform-chat-badge">0</span></button></div>' +
     '<script src="/socket.io/socket.io.js"></script>' +
     '<script>(function(){' +
     'var root=document.getElementById("platform-chat-root");if(!root)return;' +
     'var panel=document.getElementById("platform-chat-panel");' +
-    'var toggle=document.getElementById("platform-chat-toggle");' +
-    'var closeBtn=document.getElementById("platform-chat-close");' +
-    'var log=document.getElementById("platform-chat-log");' +
     'var form=document.getElementById("platform-chat-form");' +
     'var input=document.getElementById("platform-chat-input");' +
+    'var log=document.getElementById("platform-chat-log");' +
     'var badge=document.getElementById("platform-chat-badge");' +
     'var status=document.getElementById("platform-chat-status");' +
     'var errEl=document.getElementById("platform-chat-err");' +
     'var pageId=root.getAttribute("data-page-id")||"";' +
-    'var open=false,unread=0,socket=null;' +
+    'var socket=null,unread=0;' +
     'function esc(s){return String(s||"").replace(/&/g,"&").replace(/</g,"<").replace(/>/g,">").replace(/\"/g,""");}' +
     'function showErr(t){if(!errEl)return;if(!t){errEl.hidden=true;errEl.textContent="";return;}errEl.hidden=false;errEl.textContent=t;}' +
     'function setStatus(state,label){if(!status)return;status.setAttribute("data-state",state);status.textContent=label;}' +
-    'function setOpen(v){open=!!v;if(panel){panel.style.display=open?"flex":"none";panel.style.flexDirection="column";}' +
-    'if(toggle)toggle.setAttribute("aria-expanded",open?"true":"false");' +
-    'if(open){unread=0;if(badge){badge.textContent="0";badge.classList.remove("is-on");}if(input)try{input.focus();}catch(e){}}}' +
-    'if(toggle)toggle.addEventListener("click",function(e){e.preventDefault();e.stopPropagation();setOpen(!open);});' +
-    'if(closeBtn)closeBtn.addEventListener("click",function(e){e.preventDefault();e.stopPropagation();setOpen(false);});' +
+    'function isOpen(){return panel&&panel.style.display==="flex";}' +
     'function addMsg(m){if(!log||!m)return;var d=document.createElement("div");d.className="platform-chat-msg";' +
     'd.innerHTML="<strong>"+esc(m.userName||m.name||"User")+"</strong><span>"+esc(m.body||"")+"</span>";log.appendChild(d);log.scrollTop=log.scrollHeight;}' +
     'if(form){form.addEventListener("submit",function(e){e.preventDefault();e.stopPropagation();' +
     'var body=(input&&input.value||"").trim();if(!body)return false;' +
-    'if(!socket||!socket.connected){showErr("Chat is offline — wait until status shows Online");return false;}' +
+    'if(!socket||!socket.connected){showErr("Chat offline — wait for Online");return false;}' +
     'socket.emit("chat:message",{pageId:pageId,body:body},function(res){' +
     'if(!res||!res.ok){showErr((res&&res.error)||"Send failed");return;}' +
     'showErr("");if(input)input.value="";if(res.message)addMsg(res.message);});return false;});}' +
-    'if(typeof io==="undefined"){setStatus("offline","Offline");showErr("Chat library failed to load");return;}' +
+    'if(typeof io==="undefined"){setStatus("offline","Offline");return;}' +
     'socket=io({path:"/socket.io",withCredentials:true,transports:["websocket","polling"]});' +
     'socket.on("connect",function(){setStatus("online","Online");showErr("");' +
     'socket.emit("chat:join",{pageId:pageId},function(res){if(res&&res.ok&&res.history){(res.history||[]).forEach(addMsg);}});});' +
     'socket.on("disconnect",function(){setStatus("offline","Offline");});' +
     'socket.on("connect_error",function(){setStatus("offline","Offline");});' +
-    'socket.on("chat:message",function(m){addMsg(m);if(!open){unread+=1;if(badge){badge.textContent=String(unread);badge.classList.add("is-on");}}});' +
+    'socket.on("chat:message",function(m){addMsg(m);if(!isOpen()){unread+=1;if(badge){badge.textContent=String(unread);badge.classList.add("is-on");badge.style.display="inline-block";}}});' +
     '})();</script>'
   );
 }
