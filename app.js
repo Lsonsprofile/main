@@ -75,11 +75,14 @@ const sessionMiddleware = session({
   secret: process.env.SESSION_SECRET || 'dev-only-insecure-secret-change-me',
   resave: false,
   saveUninitialized: false,
+  // rolling: each request while active refreshes the cookie expiry
+  // → logout only after 12 hours of inactivity
+  rolling: true,
   cookie: {
     secure: process.env.NODE_ENV === 'production',
     httpOnly: true,
     sameSite: 'lax',
-    maxAge: 1000 * 60 * 60 * 24 * 7,
+    maxAge: 1000 * 60 * 60 * 12, // 12 hours
     path: '/',
   },
   proxy: process.env.NODE_ENV === 'production',
