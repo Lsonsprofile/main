@@ -54,7 +54,7 @@ app.use(express.urlencoded({ extended: true, limit: '8mb' }));
 app.use(express.json({ limit: '8mb' }));
 app.use(sanitizeRequestBody);
 app.use(cookieParser());
-app.use(methodOverride('_method'));
+app.use(methodOverride('_method')); // Support PUT/DELETE via forms
 
 // ---------------------------------------------------------------------------
 // Static files
@@ -68,10 +68,10 @@ app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
 // ---------------------------------------------------------------------------
-// Session configuration
+// Session configuration (must come before any routes that use req.session)
 // ---------------------------------------------------------------------------
 const sessionMiddleware = session({
-  name: 'webdev.sid',
+  name: 'webdev.sid', // custom name instead of default connect.sid
   secret: process.env.SESSION_SECRET || 'dev-only-insecure-secret-change-me',
   resave: false,
   saveUninitialized: false,
@@ -83,6 +83,8 @@ const sessionMiddleware = session({
     path: '/',
   },
   proxy: process.env.NODE_ENV === 'production',
+  // Note: For production we will later add a Mongo-backed session store.
+  // For now the default MemoryStore is acceptable in development.
 });
 app.use(sessionMiddleware);
 app.use(csrfLocals);
@@ -101,18 +103,82 @@ app.use((req, res, next) => {
   res.locals.currentUser = req.session.user || null;
   res.locals.isAuthenticated = Boolean(req.session.user);
   res.locals.isAdmin = Boolean(req.session.user && req.session.user.role === 'admin');
+  // Safe defaults so EJS never hits "X is not defined"
   res.locals.comments = res.locals.comments || [];
   res.locals.contentBlocks = res.locals.contentBlocks || [];
-  res.locals.progress = res.locals.progress || null;
-  res.locals.success = typeof res.locals.success !== 'undefined' ? res.locals.success : null;
-  res.locals.error = typeof res.locals.error !== 'undefined' ? res.locals.error : null;
+  res.locals.pages = res.locals.pages || [];
+  res.locals.success = res.locals.success || null;
+  res.locals.error = res.locals.error || null;
+  res.locals.commentError = res.locals.commentError || null;
+  res.locals.isPreview = false;
+  res.locals.isPlaceholder = false;
+  res.locals.seoDescription = res.locals.seoDescription || '';
   next();
 });
 
+// Load editable header/footer for all views (never fail the request)
+const settingsModel = require('./src/models/settingsModel');
+const pageModel = require('./src/models/pageModel');
+app.use(async (req, res, next) => {
+  try {
+    const [header, footer, pages] = await Promise.all([
+      settingsModel.getHeader(),
+      settingsModel.getFooter(),
+      pageModel.findAllPages(),
+    ]);
+    const validSlugs = new Set((pages || []).filter((page) => page.status === 'published').map((page) => page.slug));
+    res.locals.adminPageCount = (pages || []).length;
+    res.locals.publishedPageCount = validSlugs.size;
+    const storedHeader = header || settingsModel.DEFAULTS.header;
+
+    function navUrlIsPublished(url) {
+      if (!url) return false;
+      if (url === '/') return validSlugs.has('home');
+      if (url.indexOf('/lesson/') === 0) {
+        return validSlugs.has(url.slice('/lesson/'.length).split(/[?#]/)[0]);
+      }
+      const slug = String(url).replace(/^\//, '').split(/[?#]/)[0];
+      return validSlugs.has(slug);
+    }
+
+    const navItems = (storedHeader.navItems || [])
+      .filter((item) => navUrlIsPublished(item.url))
+      .map((item) => item.type === 'dropdown'
+        ? { ...item, children: (item.children || []).filter((child) => navUrlIsPublished(child.url)) }
+        : item)
+      .filter((item) => item.type !== 'dropdown' || (item.children && item.children.length > 0))
+      .filter((item, index, items) => items.findIndex((candidate) => candidate.url === item.url) === index);
+    res.locals.siteHeader = { ...storedHeader, navItems };
+    res.locals.siteFooter = footer || settingsModel.DEFAULTS.footer;
+  } catch (e) {
+    console.error('Settings load error:', e.message);
+    res.locals.siteHeader = settingsModel.DEFAULTS.header;
+    res.locals.siteFooter = settingsModel.DEFAULTS.footer;
+  }
+  next();
+});
+
+// ---------------------------------------------------------------------------
+// Routes
+// ---------------------------------------------------------------------------
 const pageController = require('./src/controllers/pageController');
 
-// Home page
-app.get('/', (req, res, next) => pageController.home(req, res, next));
+// Site pages driven by CMS (edit in Admin → Pages, slugs: home, about, contact)
+app.get('/', pageController.home);
+app.get('/home', (req, res) => res.redirect(301, '/'));
+app.get('/about', pageController.about);
+app.get('/contact', pageController.contact);
+
+// Optional contact form POST (simple thank-you for now)
+app.post('/contact', (req, res) => {
+  res.render('public/site-page', {
+    title: 'Message received',
+    pageTitle: 'Contact',
+    page: { title: 'Thank you', slug: 'contact', description: 'Your message has been received. We will get back to you soon.' },
+    contentBlocks: [],
+    isPlaceholder: false,
+  });
+});
 
 // Auth state for custom HTML pages
 app.get('/api/me', (req, res) => {
@@ -142,7 +208,8 @@ app.use(authRoutes);
 // Admin routes (protected by requireAuth + requireAdmin)
 app.use('/admin', adminRoutes);
 
-// CMS pages by slug
+// CMS pages by slug (e.g. /about, /contact, or any published slug that is not a lesson)
+// Must stay after /lesson, /admin, /api routes
 app.get('/:slug', (req, res, next) => {
   const reserved = new Set([
     'admin', 'login', 'register', 'logout', 'account', 'lessons', 'lesson',
@@ -154,7 +221,9 @@ app.get('/:slug', (req, res, next) => {
   return pageController.viewSitePage(req.params.slug, req, res, next);
 });
 
-// Soft not-found
+// ---------------------------------------------------------------------------
+// Soft not-found (friendly page, not a dead end)
+// ---------------------------------------------------------------------------
 app.use((req, res) => {
   res.status(404).render('public/404', {
     title: 'Page Not Found',
@@ -162,7 +231,9 @@ app.use((req, res) => {
   });
 });
 
-// Global error handler — never leak stack traces in production
+// ---------------------------------------------------------------------------
+// Global error handler
+// ---------------------------------------------------------------------------
 app.use((err, req, res, next) => {
   console.error(err && err.stack ? err.stack : err);
   const status = err.status || 500;
