@@ -4,52 +4,47 @@
   <%- include('../partials/admin-nav') %>
 
   <main class="admin-main">
-    <header class="admin-header">
+    <div class="admin-page-header">
       <div>
         <h1>Pages</h1>
-      <p class="admin-hint">Tip: Edit your site homepage via <a href="/admin/home"><strong>Homepage</strong></a> in the sidebar (slug must be <code>home</code>). View it at <a href="/">/</a> after publishing.</p>
-        <p>Create, edit and publish learning pages.</p>
+        <p class="admin-lead">Create, edit, publish, and control who can open each page.</p>
       </div>
-      <a href="/admin/pages/create" class="btn btn-primary">+ Create Page</a>
-    </header>
+      <div class="admin-header-actions">
+        <a href="/admin/pages/new" class="btn btn-primary">New page</a>
+      </div>
+    </div>
 
-    <% if (success) { %>
-      <div class="alert alert-success">
-        <% if (success === 'published') { %>Page published.<% } %>
-        <% if (success === 'unpublished') { %>Page unpublished.<% } %>
-        <% if (success === 'deleted') { %>Page deleted.<% } %>
-        <% if (success === 'duplicated') { %>Page duplicated as draft.<% } %>
-        <% if (success === 'access-on') { %>User access turned <strong>ON</strong> — students can open this page.<% } %>
-        <% if (success === 'access-off') { %>User access turned <strong>OFF</strong> — only you (admin) can see this page.<% } %>
-      </div>
+    <% if (typeof success !== 'undefined' && success) { %>
+      <div class="alert alert-success"><%= success %></div>
+    <% } %>
+    <% if (typeof error !== 'undefined' && error) { %>
+      <div class="alert alert-error"><%= error %></div>
     <% } %>
 
-    <% if (!pages || pages.length === 0) { %>
+    <% if (!pages || !pages.length) { %>
       <div class="empty-state">
-        <p>No pages yet. Create your first lesson page.</p>
-        <a href="/admin/pages/create" class="btn btn-primary">Create Page</a>
+        <p>No pages yet.</p>
+        <a href="/admin/pages/new" class="btn btn-primary">Create your first page</a>
       </div>
     <% } else { %>
-      <div class="table-responsive">
+      <div class="table-wrap">
         <table class="admin-table">
           <thead>
             <tr>
-              <th>Week</th>
               <th>Title</th>
               <th>Slug</th>
               <th>Status</th>
               <th>User access</th>
-<th>Actions</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
             <% pages.forEach(function(p) { %>
               <tr>
-                <td><%= p.weekNumber || '—' %></td>
                 <td><strong><%= p.title %></strong></td>
-                <td><code><%= p.slug === 'home' ? '/' : ((p.builderType === 'custom-html' || p.weekNumber != null) ? '/lesson/' + p.slug : '/' + p.slug) %></code></td>
+                <td><code><%= p.slug %></code></td>
                 <td>
-                  <span class="status-badge status-<%= p.status %>"><%= p.status %></span>
+                  <span class="badge badge-<%= p.status %>"><%= p.status %></span>
                 </td>
                 <td>
                   <form action="/admin/pages/<%= p._id %>/user-access" method="POST" class="inline-form">
