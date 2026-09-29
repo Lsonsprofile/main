@@ -20,7 +20,6 @@
   const navAvatar = navUser && navUser.avatarUrl ? navUser.avatarUrl : '';
   const navInitial = navUser && navUser.name ? String(navUser.name).charAt(0).toUpperCase() : 'U';
 %>
-<% if (typeof isAdmin !== "undefined" && isAdmin) { %>
 <header class="site-header">
   <div class="container header-inner">
     <a href="/" class="logo" aria-label="Home">
@@ -69,7 +68,7 @@
           <% } %>
           <li class="nav-divider" aria-hidden="true"></li>
           <li class="nav-item-avatar">
-            <a href="/account" class="nav-avatar-link <%= currentPath === '/account' ? 'is-active' : '' %>" title="My profile">
+            <a href="/account/settings" class="nav-avatar-link <%= currentPath && currentPath.indexOf('/account') === 0 ? 'is-active' : '' %>" title="My profile">
               <% if (navAvatar) { %>
                 <img src="<%= navAvatar %>" alt="" class="nav-avatar-img" width="32" height="32">
               <% } else { %>
@@ -87,4 +86,3 @@
     </nav>
   </div>
 </header>
-<% } %>
