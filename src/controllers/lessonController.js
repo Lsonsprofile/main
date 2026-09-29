@@ -7,10 +7,6 @@ const { prepareFullDocumentHtml } = require('../utils/platformInject');
 const commentModel = require('../models/commentModel');
 const progressModel = require('../models/progressModel');
 
-/**
- * Published page is visible to everyone when userAccess !== false.
- * When userAccess is false, only admins may view.
- */
 function userMayViewPage(page, req) {
   if (!page) return false;
   if (page.userAccess === false) {
@@ -18,7 +14,6 @@ function userMayViewPage(page, req) {
   }
   return true;
 }
-
 
 async function listLessons(req, res, next) {
   try {
@@ -74,19 +69,17 @@ async function viewLesson(req, res, next) {
       });
     }
 
-    
-    // Custom HTML pages are always full documents (no platform header/footer)
     const isCustomHtml =
       page.builderType === 'custom-html' ||
       (page.htmlSource && String(page.htmlSource).trim());
     if (isCustomHtml && page.htmlSource && String(page.htmlSource).trim()) {
-      const html = prepareFullDocumentHtml(req, page.htmlSource, page);
+      const html = await prepareFullDocumentHtml(req, page.htmlSource, page);
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
       res.setHeader('Cache-Control', 'no-store');
       return res.send(html);
     }
 
-let contentBlocks = [];
+    let contentBlocks = [];
     try {
       contentBlocks = await pageModel.findContentByPageId(page._id, {
         onlyVisible: true,
@@ -130,10 +123,6 @@ let contentBlocks = [];
   }
 }
 
-/**
- * Serve the raw custom HTML document for sandboxed iframe embedding.
- * Same-origin URL + sandbox without allow-same-origin keeps the page isolated.
- */
 async function embedPage(req, res, next) {
   try {
     const { slug } = req.params;
@@ -155,7 +144,7 @@ async function embedPage(req, res, next) {
       return res.send(
         '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Access denied</title></head>' +
         '<body style="margin:0;font-family:system-ui;padding:2rem;color:#64748b;">' +
-        '<p>This page is admin-only. Log in as an administrator to view it.</p></body></html>'
+        '<p>This page is admin-only.</p></body></html>'
       );
     }
 
@@ -166,41 +155,17 @@ async function embedPage(req, res, next) {
       return res.send(
         '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Empty</title></head>' +
         '<body style="margin:0;font-family:system-ui;padding:2rem;color:#64748b;">' +
-        '<p>No HTML saved for this page yet. Open the editor, paste your document, click <strong>Save</strong>, then <strong>Publish</strong>.</p>' +
-        '</body></html>'
+        '<p>No HTML saved yet.</p></body></html>'
       );
     }
 
-    // Soft isolation: block parent access attempts in the source
     html = html
       .replace(/\bwindow\.parent\b/g, 'window.self')
       .replace(/\bwindow\.top\b/g, 'window.self')
-      .replace(/\bwindow\.frameElement\b/g, 'null')
-      .replace(/\s+target\s*=\s*(["'])_blank\1/gi, '')
-      .replace(/\s+target\s*=\s*_blank(?=[\s>])/gi, '');
-
-    const probe =
-      '<script>(function(){function measure(){try{' +
-      'var h=Math.max(' +
-      'document.body?document.body.scrollHeight:0,' +
-      'document.documentElement?document.documentElement.scrollHeight:0,' +
-      'document.body?document.body.offsetHeight:0,' +
-      '1200);' +
-      'if(window.parent&&window.parent!==window){' +
-      'window.parent.postMessage({type:"chf-resize",height:h},"*");}' +
-      '}catch(e){}}' +
-      'window.addEventListener("load",function(){measure();setTimeout(measure,500);setTimeout(measure,1500);});' +
-      'setInterval(measure,1200);' +
-      '})();</scr' + 'ipt>';
-    if (/<\/body>/i.test(html)) {
-      html = html.replace(/<\/body>/i, probe + '</body>');
-    } else {
-      html += probe;
-    }
+      .replace(/\bwindow\.frameElement\b/g, 'null');
 
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.setHeader('X-Frame-Options', 'SAMEORIGIN');
-    res.setHeader('Cache-Control', 'private, max-age=30');
     return res.status(200).send(html);
   } catch (err) {
     next(err);
