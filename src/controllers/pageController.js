@@ -1,7 +1,6 @@
 /**
  * Public site pages (home, about, contact, …).
  * Custom HTML pages are always full documents — no platform header/footer.
- * Admins get a floating Dashboard button injected only when logged in.
  */
 
 const pageModel = require('../models/pageModel');
@@ -23,8 +22,8 @@ function isCustomHtmlPage(page) {
   );
 }
 
-function sendFullHtml(req, res, page) {
-  const html = prepareFullDocumentHtml(req, page.htmlSource, page);
+async function sendFullHtml(req, res, page) {
+  const html = await prepareFullDocumentHtml(req, page.htmlSource, page);
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.setHeader('Cache-Control', 'no-store');
   return res.send(html);
@@ -60,7 +59,6 @@ async function viewSitePage(slug, req, res, next) {
         });
       }
       if (slug === 'about' || slug === 'contact') {
-        // Soft placeholder instead of hard 404
         return res.status(200).render('public/site-page', {
           title: slug.charAt(0).toUpperCase() + slug.slice(1),
           pageTitle: slug.charAt(0).toUpperCase() + slug.slice(1),
@@ -95,7 +93,7 @@ async function viewSitePage(slug, req, res, next) {
     }
 
     if (isCustomHtmlPage(page)) {
-      return sendFullHtml(req, res, page);
+      return await sendFullHtml(req, res, page);
     }
 
     let contentBlocks = [];
