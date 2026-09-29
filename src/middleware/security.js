@@ -78,8 +78,7 @@ function isSameOriginRequest(req) {
   }
   if (origin && host && origin === host) return true;
   if (referer && host && referer === host) return true;
-  // No Origin/Referer (privacy tools) but browser is posting to our host with a session
-  if (!origin && !referer && req.session) {
+  if (!origin && !referer && req.session && req.session.user) {
     return true;
   }
   return false;
@@ -91,8 +90,7 @@ function csrfProtect(req, res, next) {
     return next();
   }
 
-  // Logout should always work
-  if (req.path === '/logout' || req.originalUrl === '/logout') {
+  if (req.path === '/logout') {
     return next();
   }
 
@@ -103,17 +101,22 @@ function csrfProtect(req, res, next) {
     req.headers['csrf-token'] ||
     '';
 
-  // Explicit matching token always allowed
   if (provided && token && provided === token) {
     return next();
   }
 
-  // Same-origin browser requests (normal form posts from our own pages).
-  // Cookie sessions already use SameSite=lax; this blocks true cross-site CSRF
-  // while allowing Create Page / Save Block without a hidden field on every form.
-  if (isSameOriginRequest(req)) {
+  const isJsonOrXhr =
+    req.headers['x-requested-with'] === 'XMLHttpRequest' ||
+    (req.headers.accept || '').includes('application/json') ||
+    (req.headers['content-type'] || '').includes('application/json') ||
+    (req.headers['content-type'] || '').includes('multipart/form-data');
+
+  if (isSameOriginRequest(req) && req.session && req.session.user && isJsonOrXhr) {
     return next();
   }
+
+  if (isSameOriginRequest(req) && req.path === '/login') return next();
+  if (isSameOriginRequest(req) && req.path === '/register') return next();
 
   res.status(403);
   if ((req.headers.accept || '').includes('application/json')) {

@@ -22,7 +22,6 @@ router.get('/embed/:slug', lessonController.embedPage);
 router.post('/lesson/:slug/comments', requireAuth, commentController.createComment);
 router.post('/comments/:id/delete', requireAuth, commentController.deleteComment);
 
-
 // Account
 router.get('/account', requireAuth, accountController.showAccount);
 router.post(
@@ -39,7 +38,7 @@ router.post(
   accountController.updateAccount
 );
 
-// User settings (theme light/dark)
+// User settings (profile + theme)
 router.get('/account/settings', requireAuth, accountController.showUserSettings);
 router.post(
   '/account/settings',
@@ -54,4 +53,3 @@ router.post(
 );
 
 module.exports = router;
-
