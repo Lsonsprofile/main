@@ -3,7 +3,6 @@
   const custom = typeof isCustomHtml !== 'undefined' && isCustomHtml;
 %>
 <% if (custom && page.htmlSource) { %>
-  <%- /* custom HTML is served as full document from controller; this branch is fallback */ %>
   <main id="main-content" class="custom-html-page">
     <%- include('../partials/custom-html-frame', { htmlSource: page.htmlSource || '', slug: page.slug || '' }) %>
   </main>
@@ -33,20 +32,14 @@
       <% } %>
     </div>
   <% } else { %>
-    <article>
-      <header class="page-header">
-        <h1><%= page.title %></h1>
-        <% if (page.description) { %><p class="lead"><%= page.description %></p><% } %>
-      </header>
-      <div class="page-body">
-        <% (contentBlocks || []).forEach(function(block) { %>
-          <%- include('../partials/render-block', { block: block, root: true }) %>
-        <% }) %>
-        <% if (!contentBlocks || !contentBlocks.length) { %>
-          <p class="text-muted">No content on this page yet.</p>
-        <% } %>
-      </div>
+    <article class="site-page-body">
+      <h1><%= page.title %></h1>
+      <% if (page.description) { %><p class="lead"><%= page.description %></p><% } %>
+      <% if (typeof contentBlocks !== 'undefined' && contentBlocks && contentBlocks.length) { %>
+        <%- include('../partials/content-blocks', { blocks: contentBlocks }) %>
+      <% } %>
     </article>
   <% } %>
 </main>
 <% } %>
+<%- include('../partials/footer') %>
