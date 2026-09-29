@@ -1,6 +1,5 @@
 /**
  * User account / profile dashboard (all roles).
- * Users: profile + progress. Admins: same + link to admin panel.
  */
 
 const path = require('path');
@@ -38,6 +37,12 @@ const upload = multer({
   limits: { fileSize: 3 * 1024 * 1024 },
 });
 
+/** Public URL for an uploaded avatar (served from /public/uploads/avatars). */
+function fileToAvatarUrl(file) {
+  if (!file || !file.filename) return '';
+  return '/uploads/avatars/' + file.filename;
+}
+
 function syncSessionUser(req, user) {
   if (!req.session.user || !user) return;
   req.session.user.name = user.name;
@@ -55,7 +60,6 @@ async function loadProgressForUser(userId) {
   } catch (e) {
     pages = [];
   }
-  // Also include published pages without week numbers
   let allPublished = [];
   try {
     allPublished = await pageModel.findAllPages();
@@ -75,7 +79,8 @@ async function loadProgressForUser(userId) {
       weekNumber: p.weekNumber,
     }));
 
-  const totalLessons = (pages || []).filter((p) => p.userAccess !== false).length || (allPublished || []).length;
+  const totalLessons =
+    (pages || []).filter((p) => p.userAccess !== false).length || (allPublished || []).length;
   return {
     completedIds,
     completed,
@@ -88,61 +93,16 @@ async function showAccount(req, res) {
   return res.redirect('/account/settings');
 }
 
-/** Admin panel profile (same data, admin chrome). */
 async function showAdminProfile(req, res) {
   return res.redirect('/account/settings');
 }
 
 async function updateAdminProfile(req, res, next) {
-  try {
-    if (!req.session.user || !isValidObjectId(req.session.user._id)) {
-      return res.redirect('/login');
-    }
-    const name = cleanString(req.body.name, 100);
-    if (!name || name.length < 2) {
-      return res.redirect('/admin/profile?error=name');
-    }
-    const updates = { name };
-    if (req.file) {
-      updates.avatarUrl = '/uploads/avatars/' + req.file.filename;
-    }
-    const user = await userModel.updateProfile(req.session.user._id, updates);
-    if (user) syncSessionUser(req, user);
-    res.redirect('/admin/profile?success=updated');
-  } catch (err) {
-    if (err && err.message && /image/i.test(err.message)) {
-      return res.redirect('/admin/profile?error=image');
-    }
-    next(err);
-  }
+  return updateUserSettings(req, res, next);
 }
 
 async function updateAccount(req, res, next) {
-  try {
-    if (!req.session.user || !isValidObjectId(req.session.user._id)) {
-      return res.redirect('/login');
-    }
-
-    const name = cleanString(req.body.name, 100);
-    if (!name || name.length < 2) {
-      return res.redirect('/account/settings?error=name');
-    }
-
-    const updates = { name };
-    if (req.file) {
-      updates.avatarUrl = '/uploads/avatars/' + req.file.filename;
-    }
-
-    const user = await userModel.updateProfile(req.session.user._id, updates);
-    if (user) syncSessionUser(req, user);
-
-    res.redirect('/account/settings?success=updated');
-  } catch (err) {
-    if (err && err.message && /image/i.test(err.message)) {
-      return res.redirect('/account/settings?error=image');
-    }
-    next(err);
-  }
+  return updateUserSettings(req, res, next);
 }
 
 async function showUserSettings(req, res, next) {
@@ -194,7 +154,7 @@ async function updateUserSettings(req, res, next) {
     if (removeAvatar) {
       updates.avatarUrl = '';
     } else if (req.file) {
-      updates.avatarUrl = '/uploads/avatars/' + req.file.filename;
+      updates.avatarUrl = fileToAvatarUrl(req.file);
     }
 
     const user = await userModel.updateProfile(req.session.user._id, updates);
@@ -203,7 +163,7 @@ async function updateUserSettings(req, res, next) {
       req.session.user.theme = theme;
       if (name) req.session.user.name = name;
       if (removeAvatar) req.session.user.avatarUrl = '';
-      else if (req.file) req.session.user.avatarUrl = '/uploads/avatars/' + req.file.filename;
+      else if (req.file) req.session.user.avatarUrl = updates.avatarUrl;
     }
 
     if (removeAvatar) {
