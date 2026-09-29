@@ -1,25 +1,30 @@
 /**
- * Real-time lesson chat messages (platform-owned, not inside embeds).
+ * Site-wide real-time chat (shared across all pages).
  */
 
 const { ObjectId } = require('mongodb');
 const { getDb } = require('../db/connect');
 
-async function createMessage({ pageId, userId, userName, body }) {
+const GLOBAL_SCOPE = 'global';
+
+async function createMessage({ userId, userName, body, pageId }) {
   const db = getDb();
   const doc = {
-    pageId: new ObjectId(pageId),
+    scope: GLOBAL_SCOPE,
     userId: new ObjectId(userId),
     userName: String(userName || 'User').slice(0, 80),
     body: String(body || '').trim().slice(0, 1000),
     createdAt: new Date(),
   };
+  // Optional: where the sender was (not used for rooms)
+  if (pageId && ObjectId.isValid(pageId)) {
+    doc.pageId = new ObjectId(pageId);
+  }
   if (!doc.body) return null;
   const result = await db.collection('chat_messages').insertOne(doc);
   return {
     _id: result.insertedId,
     id: String(result.insertedId),
-    pageId: String(doc.pageId),
     userId: String(doc.userId),
     userName: doc.userName,
     body: doc.body,
@@ -27,12 +32,14 @@ async function createMessage({ pageId, userId, userName, body }) {
   };
 }
 
-async function findByPageId(pageId, { limit = 80 } = {}) {
+/** Recent messages for the whole site (newest last). */
+async function findRecent({ limit = 100 } = {}) {
   const db = getDb();
-  if (!ObjectId.isValid(pageId)) return [];
   const rows = await db
     .collection('chat_messages')
-    .find({ pageId: new ObjectId(pageId) })
+    .find({
+      $or: [{ scope: GLOBAL_SCOPE }, { scope: { $exists: false } }],
+    })
     .sort({ createdAt: -1 })
     .limit(Math.min(limit, 200))
     .toArray();
@@ -40,7 +47,6 @@ async function findByPageId(pageId, { limit = 80 } = {}) {
     .reverse()
     .map((m) => ({
       id: String(m._id),
-      pageId: String(m.pageId),
       userId: String(m.userId),
       userName: m.userName,
       body: m.body,
@@ -48,7 +54,13 @@ async function findByPageId(pageId, { limit = 80 } = {}) {
     }));
 }
 
+async function findByPageId(_pageId, opts) {
+  return findRecent(opts);
+}
+
 module.exports = {
   createMessage,
+  findRecent,
   findByPageId,
+  GLOBAL_SCOPE,
 };

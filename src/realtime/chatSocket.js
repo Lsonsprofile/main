@@ -1,9 +1,11 @@
 /**
- * Socket.io chat rooms keyed by page id.
+ * Socket.io site-wide chat (one room for all pages).
  */
 
 const chatModel = require('../models/chatModel');
 const { stripHtml } = require('../middleware/security');
+
+const SITE_ROOM = 'site:global';
 
 function getSessionUser(socket) {
   const session = socket.request && socket.request.session;
@@ -20,15 +22,11 @@ function attachChatSocket(io) {
           if (typeof ack === 'function') ack({ ok: false, error: 'Login required' });
           return;
         }
-        const pageId = payload && payload.pageId ? String(payload.pageId) : '';
-        if (!pageId || pageId.length < 10) {
-          if (typeof ack === 'function') ack({ ok: false, error: 'Invalid page' });
-          return;
+        socket.join(SITE_ROOM);
+        if (payload && payload.pageId) {
+          socket.data.pageId = String(payload.pageId);
         }
-        const room = 'page:' + pageId;
-        socket.join(room);
-        socket.data.pageId = pageId;
-        const history = await chatModel.findByPageId(pageId, { limit: 80 });
+        const history = await chatModel.findRecent({ limit: 100 });
         if (typeof ack === 'function') ack({ ok: true, history });
       } catch (err) {
         console.error('chat:join', err.message);
@@ -42,9 +40,8 @@ function attachChatSocket(io) {
           if (typeof ack === 'function') ack({ ok: false, error: 'Login required' });
           return;
         }
-        const pageId = (payload && payload.pageId) || socket.data.pageId;
         const body = payload && payload.body ? stripHtml(String(payload.body), 1000) : '';
-        if (!pageId || !body.trim()) {
+        if (!body.trim()) {
           if (typeof ack === 'function') ack({ ok: false, error: 'Empty message' });
           return;
         }
@@ -55,17 +52,20 @@ function attachChatSocket(io) {
         }
         socket.data.lastMsgAt = now;
 
+        const pageId =
+          (payload && payload.pageId) || socket.data.pageId || null;
+
         const message = await chatModel.createMessage({
-          pageId,
           userId: user._id,
           userName: user.name || user.email || 'User',
           body,
+          pageId,
         });
         if (!message) {
           if (typeof ack === 'function') ack({ ok: false, error: 'Invalid message' });
           return;
         }
-        io.to('page:' + pageId).emit('chat:message', message);
+        io.to(SITE_ROOM).emit('chat:message', message);
         if (typeof ack === 'function') ack({ ok: true, message });
       } catch (err) {
         console.error('chat:message', err.message);
