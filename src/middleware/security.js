@@ -140,6 +140,40 @@ function stripHtml(input, maxLen = 1000) {
   return s;
 }
 
+/**
+ * Strip keys that start with $ or contain . from objects (NoSQL operator injection).
+ * Does not alter string values (needed for HTML source saves).
+ */
+function sanitizeKeys(value, depth) {
+  if (depth > 8) return value;
+  if (Array.isArray(value)) {
+    return value.map((v) => sanitizeKeys(v, depth + 1));
+  }
+  if (value && typeof value === 'object' && Object.getPrototypeOf(value) === Object.prototype) {
+    const out = {};
+    for (const key of Object.keys(value)) {
+      if (key.startsWith('$') || key.includes('.')) continue;
+      out[key] = sanitizeKeys(value[key], depth + 1);
+    }
+    return out;
+  }
+  return value;
+}
+
+function sanitizeRequestBody(req, res, next) {
+  try {
+    if (req.body && typeof req.body === 'object') {
+      req.body = sanitizeKeys(req.body, 0);
+    }
+    if (req.query && typeof req.query === 'object') {
+      req.query = sanitizeKeys(req.query, 0);
+    }
+  } catch (e) {
+    // never block the request on sanitizer failure
+  }
+  next();
+}
+
 setInterval(function () {
   const now = Date.now();
   for (const [k, v] of buckets.entries()) {
@@ -153,4 +187,5 @@ module.exports = {
   csrfLocals,
   csrfProtect,
   stripHtml,
+  sanitizeRequestBody,
 };
