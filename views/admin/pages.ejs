@@ -10,7 +10,7 @@
         <p class="admin-lead">Create, edit, publish, and control who can open each page.</p>
       </div>
       <div class="admin-header-actions">
-        <a href="/admin/pages/new" class="btn btn-primary">New page</a>
+        <a href="/admin/pages/create" class="btn btn-primary">New page</a>
       </div>
     </div>
 
@@ -24,7 +24,7 @@
     <% if (!pages || !pages.length) { %>
       <div class="empty-state">
         <p>No pages yet.</p>
-        <a href="/admin/pages/new" class="btn btn-primary">Create your first page</a>
+        <a href="/admin/pages/create" class="btn btn-primary">Create your first page</a>
       </div>
     <% } else { %>
       <div class="table-wrap">
@@ -48,6 +48,7 @@
                 </td>
                 <td>
                   <form action="/admin/pages/<%= p._id %>/user-access" method="POST" class="inline-form">
+                    <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
                     <input type="hidden" name="redirect" value="/admin/pages">
                     <button type="submit"
                       class="btn btn-sm <%= p.userAccess === false ? 'btn-access-off' : 'btn-access-on' %>"
@@ -59,10 +60,12 @@
                 <td class="actions">
                   <a href="/admin/pages/<%= p._id %>/edit" class="btn btn-sm btn-secondary">Edit</a>
                   <form action="/admin/pages/<%= p._id %>/duplicate" method="POST" class="inline-form">
+                    <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
                     <button type="submit" class="btn btn-sm">Duplicate</button>
                   </form>
                   <% if (p.status === 'published') { %>
                     <form action="/admin/pages/<%= p._id %>/unpublish" method="POST" class="inline-form">
+                      <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
                       <button type="submit" class="btn btn-sm">Unpublish</button>
                     </form>
                     <% if (p.slug === 'home') { %>
@@ -76,11 +79,13 @@
                     <% } %>
                   <% } else { %>
                     <form action="/admin/pages/<%= p._id %>/publish" method="POST" class="inline-form">
+                      <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
                       <button type="submit" class="btn btn-sm btn-primary">Publish</button>
                     </form>
                   <% } %>
                   <form action="/admin/pages/<%= p._id %>/delete" method="POST" class="inline-form"
                         onsubmit="return confirm('Delete this page and all its content?');">
+                    <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
                     <button type="submit" class="btn btn-sm btn-danger">Delete</button>
                   </form>
                 </td>
