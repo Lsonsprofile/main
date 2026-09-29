@@ -108,25 +108,27 @@ function buildAdminFab(req) {
   );
 }
 
-/** Site-wide live chat — same room on every page for all logged-in users and admins. */
+/** Site-wide live chat — same room on every page. Open works even if socket is slow. */
 function buildChatWidget(req, page) {
   const user = req.session && req.session.user ? req.session.user : null;
   if (!user) return '';
   const pageId = page && page._id ? String(page._id) : '';
   return (
     '<style id="platform-chat-style">' +
-    '#platform-chat-root{position:fixed;bottom:1.25rem;left:1.25rem;z-index:2147483645;font-family:system-ui,sans-serif;pointer-events:none}' +
-    '#platform-chat-root>*{pointer-events:auto}' +
-    '#platform-chat-toggle{position:relative;display:inline-flex;align-items:center;gap:0.45rem;padding:0.65rem 1rem;border-radius:999px;border:0;cursor:pointer;background:#0ea5e9;color:#fff;font:700 0.8rem/1 system-ui,sans-serif;box-shadow:0 8px 24px rgba(14,165,233,.35)}' +
+    '#platform-chat-root{position:fixed;bottom:1.25rem;left:1.25rem;z-index:2147483646;font-family:system-ui,sans-serif}' +
+    '#platform-chat-toggle{position:relative;display:inline-flex;align-items:center;gap:0.45rem;padding:0.7rem 1.05rem;border-radius:999px;border:0;cursor:pointer;' +
+    'background:#0ea5e9;color:#fff;font:700 0.85rem/1 system-ui,sans-serif;box-shadow:0 8px 24px rgba(14,165,233,.4);pointer-events:auto}' +
+    '#platform-chat-toggle:hover{background:#0284c7}' +
     '#platform-chat-badge{display:none;position:absolute;top:-6px;right:-6px;min-width:1.25rem;height:1.25rem;padding:0 0.35rem;border-radius:999px;background:#ef4444;color:#fff;font:700 0.65rem/1.25rem system-ui,sans-serif;text-align:center}' +
     '#platform-chat-badge.is-on{display:inline-block}' +
-    '#platform-chat-panel{display:none;flex-direction:column;width:min(20rem,calc(100vw - 2.5rem));height:22rem;margin-top:0.5rem;background:#0f172a;color:#f8fafc;border-radius:14px;border:1px solid rgba(255,255,255,.12);box-shadow:0 16px 40px rgba(15,23,42,.45);overflow:hidden}' +
+    '#platform-chat-panel{display:none;flex-direction:column;width:min(20rem,calc(100vw - 2rem));height:22rem;margin-bottom:0.55rem;' +
+    'background:#0f172a;color:#f8fafc;border-radius:14px;border:1px solid rgba(255,255,255,.12);box-shadow:0 16px 40px rgba(15,23,42,.45);overflow:hidden}' +
     '#platform-chat-root.is-open #platform-chat-panel{display:flex}' +
     '#platform-chat-head{display:flex;align-items:center;justify-content:space-between;padding:0.75rem 0.85rem;border-bottom:1px solid rgba(255,255,255,.08);background:#111827}' +
     '#platform-chat-status{font-size:0.7rem;font-weight:700;color:#94a3b8}' +
     '#platform-chat-status[data-state="online"]{color:#4ade80}' +
     '#platform-chat-status[data-state="offline"]{color:#f87171}' +
-    '#platform-chat-close{border:0;background:transparent;color:#94a3b8;font-size:1.1rem;cursor:pointer}' +
+    '#platform-chat-close{border:0;background:transparent;color:#94a3b8;font-size:1.15rem;cursor:pointer;line-height:1}' +
     '#platform-chat-log{flex:1;overflow:auto;padding:0.75rem;display:flex;flex-direction:column;gap:0.55rem}' +
     '.platform-chat-msg{background:#1e293b;border-radius:10px;padding:0.5rem 0.65rem}' +
     '.platform-chat-msg strong{display:block;font-size:0.72rem;color:#7dd3fc;margin-bottom:0.2rem}' +
@@ -138,15 +140,16 @@ function buildChatWidget(req, page) {
     '@media print{#platform-chat-root{display:none}}' +
     '</style>' +
     '<div id="platform-chat-root" data-page-id="' + escapeAttr(pageId) + '">' +
-    '<button type="button" id="platform-chat-toggle" aria-expanded="false">Chat <span id="platform-chat-badge">0</span></button>' +
     '<div id="platform-chat-panel" role="dialog" aria-label="Site chat">' +
     '<div id="platform-chat-head"><div><strong>Live chat</strong>' +
-    '<div id="platform-chat-status" data-state="offline">Connecting…</div></div>' +
+    '<div id="platform-chat-status" data-state="offline">…</div></div>' +
     '<button type="button" id="platform-chat-close" aria-label="Close chat">×</button></div>' +
     '<div id="platform-chat-log"></div><div id="platform-chat-err" hidden></div>' +
     '<form id="platform-chat-form" autocomplete="off">' +
     '<input id="platform-chat-input" maxlength="500" placeholder="Message…" />' +
-    '<button type="submit" id="platform-chat-send">Send</button></form></div></div>' +
+    '<button type="submit" id="platform-chat-send">Send</button></form></div>' +
+    '<button type="button" id="platform-chat-toggle" aria-expanded="false">Chat <span id="platform-chat-badge">0</span></button>' +
+    '</div>' +
     '<script src="/socket.io/socket.io.js"></script>' +
     '<script>(function(){' +
     'var root=document.getElementById("platform-chat-root");if(!root)return;' +
@@ -162,21 +165,23 @@ function buildChatWidget(req, page) {
     'var unread=0,open=false;' +
     'function esc(s){return String(s||"").replace(/&/g,"&").replace(/</g,"<").replace(/>/g,">").replace(/\"/g,""");}' +
     'function showErr(t){if(!errEl)return;if(!t){errEl.hidden=true;errEl.textContent="";return;}errEl.hidden=false;errEl.textContent=t;}' +
-    'function setOpen(v){open=!!v;root.classList.toggle("is-open",open);toggle.setAttribute("aria-expanded",open?"true":"false");' +
-    'if(open){unread=0;badge.textContent="0";badge.classList.remove("is-on");if(input)input.focus();}}' +
-    'toggle.addEventListener("click",function(){setOpen(!open);});' +
-    'if(closeBtn)closeBtn.addEventListener("click",function(){setOpen(false);});' +
+    'function setOpen(v){open=!!v;root.classList.toggle("is-open",open);if(toggle)toggle.setAttribute("aria-expanded",open?"true":"false");' +
+    'if(open){unread=0;if(badge){badge.textContent="0";badge.classList.remove("is-on");}if(input)input.focus();}}' +
+    'if(toggle)toggle.addEventListener("click",function(e){e.preventDefault();e.stopPropagation();setOpen(!open);});' +
+    'if(closeBtn)closeBtn.addEventListener("click",function(e){e.preventDefault();setOpen(false);});' +
     'function addMsg(m){if(!log||!m)return;var d=document.createElement("div");d.className="platform-chat-msg";' +
     'd.innerHTML="<strong>"+esc(m.userName||m.name||"User")+"</strong><span>"+esc(m.body||"")+"</span>";log.appendChild(d);log.scrollTop=log.scrollHeight;}' +
-    'if(typeof io==="undefined"){status.textContent="Chat offline";status.setAttribute("data-state","offline");return;}' +
-    'var socket=io({path:"/socket.io",withCredentials:true});' +
-    'socket.on("connect",function(){status.textContent="Online";status.setAttribute("data-state","online");' +
+    'function setStatus(state,label){if(!status)return;status.setAttribute("data-state",state);status.textContent=label;}' +
+    'if(typeof io==="undefined"){setStatus("offline","Offline");return;}' +
+    'var socket=io({path:"/socket.io",withCredentials:true,transports:["websocket","polling"]});' +
+    'socket.on("connect",function(){setStatus("online","Online");' +
     'socket.emit("chat:join",{pageId:pageId},function(res){if(res&&res.ok&&res.history){(res.history||[]).forEach(addMsg);}});});' +
-    'socket.on("disconnect",function(){status.textContent="Offline";status.setAttribute("data-state","offline");});' +
-    'socket.on("chat:message",function(m){addMsg(m);if(!open){unread+=1;badge.textContent=String(unread);badge.classList.add("is-on");}});' +
-    'form.addEventListener("submit",function(e){e.preventDefault();var body=(input.value||"").trim();if(!body)return;' +
+    'socket.on("disconnect",function(){setStatus("offline","Offline");});' +
+    'socket.on("connect_error",function(){setStatus("offline","Offline");});' +
+    'socket.on("chat:message",function(m){addMsg(m);if(!open){unread+=1;if(badge){badge.textContent=String(unread);badge.classList.add("is-on");}}});' +
+    'if(form)form.addEventListener("submit",function(e){e.preventDefault();var body=(input&&input.value||"").trim();if(!body)return;' +
     'socket.emit("chat:message",{pageId:pageId,body:body},function(res){if(!res||!res.ok){showErr((res&&res.error)||"Send failed");return;}' +
-    'showErr("");input.value="";});});' +
+    'showErr("");if(input)input.value="";});});' +
     '})();</script>'
   );
 }
