@@ -5,6 +5,7 @@
 'use strict';
 
 const crypto = require('crypto');
+const userModel = require('../models/userModel');
 
 function escapeAttr(value) {
   return String(value ?? '')
@@ -56,19 +57,21 @@ function injectBeforeBodyClose(html, snippet) {
   return html + snippet;
 }
 
-function buildThemeBootstrap(req) {
-  const theme = sessionUser(req)?.theme === 'dark' ? 'dark' : 'light';
+function buildThemeBootstrap(req, themeUser) {
+  const user = themeUser || sessionUser(req);
+  const theme = user?.theme === 'dark' ? 'dark' : 'light';
   return `<script>try{document.documentElement.setAttribute("data-theme","${theme}");}catch(e){}</script>`;
 }
 
-function buildAuthBootstrap(req) {
-  const user = sessionUser(req);
+function buildAuthBootstrap(req, freshUser) {
+  const session = sessionUser(req);
+  const user = freshUser || session;
   const payload = {
-    loggedIn: Boolean(user),
-    name: user?.name ? String(user.name) : '',
-    role: user?.role ? String(user.role) : '',
-    isAdmin: Boolean(user?.role === 'admin'),
-    avatarUrl: user?.avatarUrl ? String(user.avatarUrl) : '',
+    loggedIn: Boolean(user || session),
+    name: user?.name ? String(user.name) : session?.name ? String(session.name) : '',
+    role: user?.role ? String(user.role) : session?.role ? String(session.role) : '',
+    isAdmin: Boolean((user || session)?.role === 'admin'),
+    avatarUrl: user?.avatarUrl ? String(user.avatarUrl) : session?.avatarUrl ? String(session.avatarUrl) : '',
     csrfToken: ensureCsrf(req),
   };
   const json = JSON.stringify(payload).replace(/</g, '\\u003c');
@@ -221,14 +224,55 @@ function buildChatWidget(req, page) {
 })();<\/script>`;
 }
 
-function prepareFullDocumentHtml(req, htmlSource, page) {
+async function prepareFullDocumentHtml(req, htmlSource, page) {
   let html = String(htmlSource || '');
   if (!html.trim()) {
-    html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Empty</title></head><body style="margin:0;font-family:system-ui;padding:2rem;color:#64748b"><p>No HTML yet. Paste your full document in Admin, Save, then Publish.</p></body></html>';
+    html =
+      '<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
+      '<title>Empty</title></head><body style="margin:0;font-family:system-ui;padding:2rem;color:#64748b">' +
+      '<p>No HTML yet. Paste your full document in Admin, Save, then Publish.</p></body></html>';
   }
-  html = html.replace(/\bwindow\.parent\b/g, 'window.self').replace(/\bwindow\.top\b/g, 'window.self').replace(/\bwindow\.frameElement\b/g, 'null');
-  html = injectEarly(html, buildThemeBootstrap(req) + buildAuthBootstrap(req));
-  const widgets = buildProgressWidget(req, page) + buildChatWidget(req, page) + buildUserFab(req) + buildAdminFab(req);
+
+  html = html
+    .replace(/\bwindow\.parent\b/g, 'window.self')
+    .replace(/\bwindow\.top\b/g, 'window.self')
+    .replace(/\bwindow\.frameElement\b/g, 'null');
+
+  let freshUser = null;
+  const session = sessionUser(req);
+  if (session && session._id) {
+    try {
+      const dbUser = await userModel.findById(session._id);
+      if (dbUser) {
+        freshUser = {
+          name: dbUser.name,
+          email: dbUser.email,
+          role: dbUser.role,
+          avatarUrl: dbUser.avatarUrl || '',
+          theme: dbUser.theme === 'dark' ? 'dark' : 'light',
+        };
+        if (req.session && req.session.user) {
+          req.session.user.avatarUrl = freshUser.avatarUrl;
+          req.session.user.name = freshUser.name;
+          req.session.user.theme = freshUser.theme;
+        }
+      }
+    } catch (e) {
+      /* fall back to session */
+    }
+  }
+
+  html = injectEarly(
+    html,
+    buildThemeBootstrap(req, freshUser) + buildAuthBootstrap(req, freshUser)
+  );
+
+  const widgets =
+    buildProgressWidget(req, page) +
+    buildChatWidget(req, page) +
+    buildUserFab(req) +
+    buildAdminFab(req);
+
   return injectBeforeBodyClose(html, widgets);
 }
 
