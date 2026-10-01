@@ -16,29 +16,40 @@ const PORT = process.env.PORT || 3000;
 async function start() {
   try {
     const uploadDir = path.join(__dirname, 'public', 'uploads');
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
+    if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+    const avatarDir = path.join(uploadDir, 'avatars');
+    if (!fs.existsSync(avatarDir)) fs.mkdirSync(avatarDir, { recursive: true });
 
     await connect();
 
     const server = http.createServer(app);
     const io = new Server(server, {
       path: '/socket.io',
-      cors: { origin: false },
+      transports: ['polling', 'websocket'],
+      allowEIO3: true,
+      cors: { origin: true, credentials: true },
     });
 
     const sessionMiddleware = app.sessionMiddleware;
     if (sessionMiddleware) {
-      io.engine.use(sessionMiddleware);
+      // Official pattern: run express-session on the socket handshake request
+      const wrap = (middleware) => (socket, next) => {
+        middleware(socket.request, {}, next);
+      };
+      io.use(wrap(sessionMiddleware));
+      io.engine.use((req, res, next) => {
+        sessionMiddleware(req, res, next);
+      });
     }
 
     attachChatSocket(io);
+    // Expose io for optional use
+    app.set('io', io);
 
     server.listen(PORT, '0.0.0.0', () => {
       console.log(`Server running on port ${PORT}`);
       console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-      console.log('Real-time chat: enabled (Socket.io)');
+      console.log('Real-time chat: enabled (Socket.io + HTTP fallback)');
     });
   } catch (err) {
     console.error('Failed to start server:', err.message);
