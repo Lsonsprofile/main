@@ -1,32 +1,23 @@
 /**
  * Socket.io chat rooms keyed by page id.
- * Session is re-read on each event so login state is reliable after connect.
+ * User is read from session on every event (not only at connection).
  */
 
 const chatModel = require('../models/chatModel');
 const { stripHtml } = require('../middleware/security');
 
-function readUser(socket) {
-  try {
-    const req = socket.request;
-    if (!req) return null;
-    const session = req.session;
-    if (!session || !session.user) return null;
-    return session.user;
-  } catch (e) {
-    return null;
-  }
+function getSessionUser(socket) {
+  const session = socket.request && socket.request.session;
+  return session && session.user ? session.user : null;
 }
 
 function attachChatSocket(io) {
   io.on('connection', (socket) => {
     socket.on('chat:join', async (payload, ack) => {
       try {
-        const user = readUser(socket);
+        const user = getSessionUser(socket);
         if (!user) {
-          if (typeof ack === 'function') {
-            ack({ ok: false, error: 'Login required. Refresh the page after logging in.' });
-          }
+          if (typeof ack === 'function') ack({ ok: false, error: 'Login required' });
           return;
         }
         const pageId = payload && payload.pageId ? String(payload.pageId) : '';
@@ -37,7 +28,6 @@ function attachChatSocket(io) {
         const room = 'page:' + pageId;
         socket.join(room);
         socket.data.pageId = pageId;
-        socket.data.userId = String(user._id);
         const history = await chatModel.findByPageId(pageId, { limit: 80 });
         if (typeof ack === 'function') ack({ ok: true, history });
       } catch (err) {
@@ -48,11 +38,9 @@ function attachChatSocket(io) {
 
     socket.on('chat:message', async (payload, ack) => {
       try {
-        const user = readUser(socket);
+        const user = getSessionUser(socket);
         if (!user) {
-          if (typeof ack === 'function') {
-            ack({ ok: false, error: 'Login required. Refresh the page after logging in.' });
-          }
+          if (typeof ack === 'function') ack({ ok: false, error: 'Login required' });
           return;
         }
         const pageId = (payload && payload.pageId) || socket.data.pageId;

@@ -85,7 +85,7 @@
   var socket = io({
     path: '/socket.io',
     withCredentials: true,
-    transports: ['websocket', 'polling'],
+    transports: ['polling', 'websocket'],
   });
 
   socket.on('connect', function () {
@@ -134,7 +134,6 @@
         showError('');
         input.value = '';
         input.focus();
-        // message also arrives via broadcast; if ack includes message, append optimistically
         if (res.message) appendMessage(res.message);
       });
     });
