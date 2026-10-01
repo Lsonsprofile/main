@@ -1,6 +1,5 @@
 /**
- * Socket.io chat rooms keyed by page id.
- * User is read from session on every event (not only at connection).
+ * Socket.io chat rooms keyed by page id (same design as main).
  */
 
 const chatModel = require('../models/chatModel');

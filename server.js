@@ -29,17 +29,12 @@ async function start() {
     const server = http.createServer(app);
     const io = new Server(server, {
       path: '/socket.io',
-      cors: { origin: true, credentials: true },
-      transports: ['polling', 'websocket'],
+      cors: { origin: false },
     });
 
     const sessionMiddleware = app.sessionMiddleware;
     if (sessionMiddleware) {
-      // Share Express session with Socket.IO (same idea as main, stronger wrap)
       io.engine.use(sessionMiddleware);
-      io.use((socket, next) => {
-        sessionMiddleware(socket.request, {}, next);
-      });
     }
 
     attachChatSocket(io);
