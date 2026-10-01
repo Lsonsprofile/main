@@ -22,6 +22,7 @@ const {
   csrfProtect,
   sanitizeRequestBody,
 } = require('./src/middleware/security');
+const chatController = require('./src/controllers/chatController');
 
 const app = express();
 
@@ -184,6 +185,10 @@ app.get('/api/me', async (req, res) => {
 app.get('/health', (req, res) => {
   res.status(200).json({ ok: true, env: process.env.NODE_ENV || 'development' });
 });
+
+// Chat send/receive (HTTP) — before CSRF; controller checks login session
+app.get('/api/chat/:pageId', chatController.getHistory);
+app.post('/api/chat/:pageId', chatController.postMessage);
 
 app.use(csrfProtect);
 app.use(publicRoutes);

@@ -4,7 +4,13 @@
 
   var pageId = root.getAttribute('data-page-id');
   var userId = root.getAttribute('data-user-id');
-  if (!pageId || !userId) return;
+  if (!pageId) {
+    console.warn('[chat] missing page id');
+    return;
+  }
+  if (!userId) {
+    return;
+  }
 
   var statusEl = document.getElementById('chat-status');
   var listEl = document.getElementById('chat-messages');
@@ -12,8 +18,6 @@
   var input = document.getElementById('chat-input');
   var errorEl = document.getElementById('chat-error');
   var seen = {};
-  var mode = 'http';
-  var socket = null;
   var pollTimer = null;
 
   function setStatus(state, label) {
@@ -49,64 +53,64 @@
     }
   }
 
-  function appendMessage(msg, opts) {
-    if (!listEl || !msg || !msg.id) return;
-    if (seen[msg.id]) return;
-    seen[msg.id] = true;
+  function appendMessage(msg) {
+    if (!listEl || !msg) return;
+    var id = String(msg.id || msg._id || '');
+    if (id && seen[id]) return;
+    if (id) seen[id] = true;
 
     var mine = String(msg.userId) === String(userId);
     var row = document.createElement('div');
     row.className = 'chat-msg' + (mine ? ' is-mine' : '');
-    row.setAttribute('data-id', msg.id);
+    if (id) row.setAttribute('data-id', id);
     row.innerHTML =
-      '<div class="chat-msg-meta">' +
-      '<strong>' +
+      '<div class="chat-msg-meta"><strong>' +
       escapeHtml(msg.userName || 'User') +
-      '</strong>' +
-      '<time>' +
+      '</strong><time>' +
       escapeHtml(formatTime(msg.createdAt)) +
-      '</time>' +
-      '</div>' +
-      '<p class="chat-msg-body">' +
+      '</time></div><p class="chat-msg-body">' +
       escapeHtml(msg.body || '') +
       '</p>';
     listEl.appendChild(row);
-
-    if (!opts || opts.scroll !== false) {
-      listEl.scrollTop = listEl.scrollHeight;
-    }
+    listEl.scrollTop = listEl.scrollHeight;
   }
 
   function applyHistory(history) {
     if (listEl) listEl.innerHTML = '';
     seen = {};
-    (history || []).forEach(function (m) {
-      appendMessage(m, { scroll: false });
-    });
+    (history || []).forEach(appendMessage);
     if (listEl) listEl.scrollTop = listEl.scrollHeight;
   }
 
-  function loadHttp() {
+  function loadMessages() {
     return fetch('/api/chat/' + encodeURIComponent(pageId), {
+      method: 'GET',
       credentials: 'same-origin',
       headers: {
         Accept: 'application/json',
         'X-Requested-With': 'XMLHttpRequest',
       },
     }).then(function (r) {
-      return r.json().then(function (d) {
+      return r.text().then(function (text) {
+        var d = null;
+        try {
+          d = text ? JSON.parse(text) : null;
+        } catch (e) {
+          throw new Error('Bad response from server');
+        }
         return { status: r.status, d: d };
       });
     }).then(function (x) {
-      if (x.status === 401) throw new Error('Login required');
+      if (x.status === 401) throw new Error('Login required — please log in again');
+      if (x.status === 404) throw new Error('Chat API not found — restart server with latest code');
       if (!x.d || !x.d.ok) throw new Error((x.d && x.d.error) || 'Could not load chat');
       applyHistory(x.d.history);
-      setStatus('online', mode === 'live' ? 'Live' : 'Online');
+      setStatus('online', 'Online');
       showError('');
     });
   }
 
-  function sendHttp(body) {
+  function sendMessage(body) {
     return fetch('/api/chat/' + encodeURIComponent(pageId), {
       method: 'POST',
       credentials: 'same-origin',
@@ -117,99 +121,62 @@
       },
       body: JSON.stringify({ body: body }),
     }).then(function (r) {
-      return r.json().then(function (d) {
+      return r.text().then(function (text) {
+        var d = null;
+        try {
+          d = text ? JSON.parse(text) : null;
+        } catch (e) {
+          throw new Error('Bad response from server');
+        }
         return { status: r.status, d: d };
       });
     });
   }
 
   setStatus('connecting', 'Connecting…');
-  loadHttp()
+  loadMessages()
     .then(function () {
-      setStatus('online', 'Online');
       pollTimer = setInterval(function () {
-        if (mode === 'live') return;
-        loadHttp().catch(function () {});
-      }, 4000);
+        loadMessages().catch(function () {});
+      }, 3000);
     })
     .catch(function (e) {
       setStatus('offline', 'Offline');
       showError(e.message || 'Chat unavailable');
+      console.error('[chat]', e);
     });
-
-  if (typeof io !== 'undefined') {
-    try {
-      socket = io({
-        path: '/socket.io',
-        withCredentials: true,
-        transports: ['polling', 'websocket'],
-        timeout: 8000,
-        reconnection: true,
-        reconnectionAttempts: 8,
-      });
-      socket.on('connect', function () {
-        socket.emit('chat:join', { pageId: pageId }, function (res) {
-          if (!res || !res.ok) return;
-          mode = 'live';
-          setStatus('online', 'Live');
-          showError('');
-          applyHistory(res.history);
-          if (pollTimer) {
-            clearInterval(pollTimer);
-            pollTimer = null;
-          }
-        });
-      });
-      socket.on('chat:message', function (msg) {
-        if (mode === 'live') appendMessage(msg);
-      });
-      socket.on('connect_error', function () {});
-    } catch (e) {}
-  }
 
   if (form && input) {
     form.addEventListener('submit', function (e) {
       e.preventDefault();
+      e.stopPropagation();
       var body = (input.value || '').trim();
       if (!body) return;
       input.disabled = true;
-
-      function finish(ok, err, message) {
-        input.disabled = false;
-        if (!ok) {
-          showError(err || 'Could not send');
-          input.focus();
-          return;
-        }
-        showError('');
-        input.value = '';
-        input.focus();
-        if (message) appendMessage(message);
-      }
-
-      if (mode === 'live' && socket && socket.connected) {
-        socket.emit('chat:message', { pageId: pageId, body: body }, function (res) {
-          if (res && res.ok) {
-            finish(true, null, res.message);
+      showError('');
+      sendMessage(body)
+        .then(function (x) {
+          input.disabled = false;
+          if (x.status === 401) {
+            showError('Login required — please log in again');
+            input.focus();
             return;
           }
-          sendHttp(body)
-            .then(function (x) {
-              finish(x.d && x.d.ok, (x.d && x.d.error) || 'Could not send', x.d && x.d.message);
-            })
-            .catch(function () {
-              finish(false, 'Could not send');
-            });
+          if (!x.d || !x.d.ok) {
+            showError((x.d && x.d.error) || 'Could not send');
+            input.focus();
+            return;
+          }
+          input.value = '';
+          if (x.d.message) appendMessage(x.d.message);
+          input.focus();
+          setStatus('online', 'Online');
+        })
+        .catch(function (err) {
+          input.disabled = false;
+          showError(err.message || 'Could not send');
+          input.focus();
         });
-      } else {
-        sendHttp(body)
-          .then(function (x) {
-            finish(x.d && x.d.ok, (x.d && x.d.error) || 'Could not send', x.d && x.d.message);
-          })
-          .catch(function () {
-            finish(false, 'Could not send. Are you logged in?');
-          });
-      }
     });
   }
 })();
