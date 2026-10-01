@@ -1,0 +1,129 @@
+/* Admin tables — full content on mobile */
+
+.table-responsive {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin-bottom: 1.25rem;
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 0.5rem;
+  background: var(--color-surface, #fff);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.table-responsive .admin-table {
+  box-shadow: none;
+  border-radius: 0;
+  margin: 0;
+  min-width: 36rem;
+  width: 100%;
+}
+
+.admin-table .cell-email {
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.admin-main {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+@media (max-width: 640px) {
+  .table-responsive {
+    overflow: visible;
+    border: none;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .table-responsive .admin-table {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .admin-table-cards thead {
+    display: none;
+  }
+
+  .admin-table-cards,
+  .admin-table-cards tbody,
+  .admin-table-cards tr,
+  .admin-table-cards td {
+    display: block;
+    width: 100%;
+  }
+
+  .admin-table-cards tbody {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+  }
+
+  .admin-table-cards tr {
+    background: var(--color-surface, #fff);
+    border: 1px solid var(--color-border, #e5e7eb);
+    border-radius: 0.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    padding: 0.85rem 1rem;
+    margin: 0;
+  }
+
+  .admin-table-cards td {
+    border-bottom: none;
+    padding: 0.4rem 0;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    text-align: right;
+  }
+
+  .admin-table-cards td + td {
+    border-top: 1px solid var(--color-border, #e5e7eb);
+    padding-top: 0.55rem;
+    margin-top: 0.15rem;
+  }
+
+  .admin-table-cards td::before {
+    content: attr(data-label);
+    font-weight: 700;
+    font-size: 0.8rem;
+    color: var(--color-text-muted, #6b7280);
+    text-align: left;
+    flex: 0 0 5.5rem;
+  }
+
+  .admin-table-cards td.actions {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 0.5rem;
+  }
+
+  .admin-table-cards td.actions::before {
+    width: 100%;
+    flex-basis: 100%;
+    margin-bottom: 0.25rem;
+  }
+
+  .admin-table-cards .actions .btn {
+    flex: 1 1 auto;
+    min-height: 2.5rem;
+  }
+
+  .admin-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .admin-header h1 {
+    font-size: 1.35rem;
+  }
+
+  .admin-main {
+    padding-inline: 0.85rem;
+  }
+}

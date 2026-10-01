@@ -18,7 +18,7 @@
       <div class="empty-state"><p>No users yet.</p></div>
     <% } else { %>
       <div class="table-responsive">
-        <table class="admin-table">
+        <table class="admin-table admin-table-cards">
           <thead>
             <tr>
               <th>Name</th>
@@ -31,11 +31,11 @@
           <tbody>
             <% users.forEach(function(u) { %>
               <tr>
-                <td><%= u.name %><% if (String(u._id) === String(currentUserId)) { %> <em>(you)</em><% } %></td>
-                <td><%= u.email %></td>
-                <td><span class="status-badge status-<%= u.role === 'admin' ? 'published' : 'draft' %>"><%= u.role %></span></td>
-                <td><%= u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '—' %></td>
-                <td class="actions">
+                <td data-label="Name"><%= u.name %><% if (String(u._id) === String(currentUserId)) { %> <em>(you)</em><% } %></td>
+                <td data-label="Email" class="cell-email"><%= u.email %></td>
+                <td data-label="Role"><span class="status-badge status-<%= u.role === 'admin' ? 'published' : 'draft' %>"><%= u.role %></span></td>
+                <td data-label="Joined"><%= u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '—' %></td>
+                <td data-label="Actions" class="actions">
                   <% if (String(u._id) !== String(currentUserId)) { %>
                     <form action="/admin/users/<%= u._id %>/role" method="POST" class="inline-form">
                       <input type="hidden" name="role" value="<%= u.role === 'admin' ? 'user' : 'admin' %>">
