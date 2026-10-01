@@ -19,16 +19,18 @@
   var socket = null;
   var pollTimer = null;
 
+  function csrfHeaders(extra) {
+    var h = Object.assign({ Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, extra || {});
+    try {
+      var t = (window.__AUTH__ && window.__AUTH__.csrfToken) || '';
+      if (t) h['X-CSRF-Token'] = t;
+    } catch (e) {}
+    return h;
+  }
   function esc(s) {
-    return String(s || '')
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
+    return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
-  function isOpen() {
-    return root.classList.contains('is-open');
-  }
+  function isOpen() { return root.classList.contains('is-open'); }
   function setStatus(state, label) {
     if (!statusEl) return;
     statusEl.setAttribute('data-state', state);
@@ -36,13 +38,8 @@
   }
   function showErr(m) {
     if (!errEl) return;
-    if (!m) {
-      errEl.hidden = true;
-      errEl.textContent = '';
-      return;
-    }
-    errEl.hidden = false;
-    errEl.textContent = m;
+    if (!m) { errEl.hidden = true; errEl.textContent = ''; return; }
+    errEl.hidden = false; errEl.textContent = m;
   }
   function updateBadge() {
     if (!badge) return;
@@ -57,8 +54,7 @@
   function openChat() {
     root.classList.add('is-open');
     if (toggle) toggle.setAttribute('aria-expanded', 'true');
-    unread = 0;
-    updateBadge();
+    unread = 0; updateBadge();
     if (input) input.focus();
   }
   function closeChat() {
@@ -76,9 +72,8 @@
     if (list.querySelector('.pc-msg') || list.querySelector('.pc-empty')) return;
     var empty = document.createElement('div');
     empty.className = 'pc-empty';
-    empty.style.cssText =
-      'margin:auto;text-align:center;color:#64748b;font-size:0.85rem;padding:1.5rem 0.75rem;line-height:1.5';
-    empty.innerHTML = 'No messages yet.<br>Say hello \ud83d\udc4b';
+    empty.style.cssText = 'margin:auto;text-align:center;color:#64748b;font-size:0.85rem;padding:1.5rem 0.75rem;line-height:1.5';
+    empty.innerHTML = 'No messages yet.<br>Say hello \uD83D\uDC4B';
     list.appendChild(empty);
   }
   function addMsg(msg, fromHistory) {
@@ -90,109 +85,69 @@
     var mine = String(msg.userId) === String(userId);
     var row = document.createElement('div');
     row.className = 'pc-msg' + (mine ? ' is-mine' : '');
-    row.innerHTML =
-      '<div class="pc-msg-meta">' +
-      esc(msg.userName || 'User') +
-      '</div><div>' +
-      esc(msg.body) +
-      '</div>';
+    row.innerHTML = '<div class="pc-msg-meta">' + esc(msg.userName || 'User') + '</div><div>' + esc(msg.body) + '</div>';
     list.appendChild(row);
     list.scrollTop = list.scrollHeight;
-    if (!fromHistory && !mine && !isOpen()) {
-      unread += 1;
-      updateBadge();
-    }
+    if (!fromHistory && !mine && !isOpen()) { unread += 1; updateBadge(); }
   }
   function applyHistory(history) {
     if (list) list.innerHTML = '';
     seen = {};
-    (history || []).forEach(function (m) {
-      addMsg(m, true);
-    });
+    (history || []).forEach(function (m) { addMsg(m, true); });
     if (!(history && history.length)) renderEmpty();
   }
   function loadHttp() {
     return fetch('/api/chat/' + encodeURIComponent(pageId), {
       credentials: 'same-origin',
-      headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-    })
-      .then(function (r) {
-        return r.json().then(function (d) {
-          return { status: r.status, d: d };
-        });
-      })
-      .then(function (x) {
-        if (x.status === 401) throw new Error('Login required');
-        if (!x.d || !x.d.ok) throw new Error((x.d && x.d.error) || 'Load failed');
-        applyHistory(x.d.history);
-        setStatus('online', mode === 'live' ? 'Live' : 'Online');
-        showErr('');
-      });
+      headers: csrfHeaders()
+    }).then(function (r) {
+      return r.json().then(function (d) { return { status: r.status, d: d }; });
+    }).then(function (x) {
+      if (x.status === 401) throw new Error('Login required');
+      if (!x.d || !x.d.ok) throw new Error((x.d && x.d.error) || 'Load failed');
+      applyHistory(x.d.history);
+      setStatus('online', mode === 'live' ? 'Live' : 'Online');
+      showErr('');
+    });
   }
   function sendHttp(body) {
     return fetch('/api/chat/' + encodeURIComponent(pageId), {
       method: 'POST',
       credentials: 'same-origin',
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-        'X-Requested-With': 'XMLHttpRequest',
-      },
-      body: JSON.stringify({ body: body }),
-    }).then(function (r) {
-      return r.json();
-    });
+      headers: csrfHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ body: body })
+    }).then(function (r) { return r.json(); });
   }
 
-  if (toggle)
-    toggle.addEventListener('click', function () {
-      if (isOpen()) closeChat();
-      else openChat();
-    });
-  if (closeBtn)
-    closeBtn.addEventListener('click', function (e) {
-      e.preventDefault();
-      closeChat();
-    });
+  if (toggle) toggle.addEventListener('click', function () { if (isOpen()) closeChat(); else openChat(); });
+  if (closeBtn) closeBtn.addEventListener('click', function (e) { e.preventDefault(); closeChat(); });
 
   setStatus('offline', 'Connecting\u2026');
-  loadHttp()
-    .then(function () {
-      setStatus('online', 'Online');
-      pollTimer = setInterval(function () {
-        if (mode === 'live') return;
-        loadHttp().catch(function () {});
-      }, 4000);
-    })
-    .catch(function (e) {
-      setStatus('offline', 'Offline');
-      showErr(e.message || 'Chat unavailable');
-      renderEmpty();
-    });
+  loadHttp().then(function () {
+    setStatus('online', 'Online');
+    pollTimer = setInterval(function () {
+      if (mode === 'live') return;
+      loadHttp().catch(function () {});
+    }, 4000);
+  }).catch(function (e) {
+    setStatus('offline', 'Offline');
+    showErr(e.message || 'Chat unavailable');
+    renderEmpty();
+  });
 
   if (typeof io !== 'undefined') {
     try {
-      socket = io({
-        path: '/socket.io',
-        withCredentials: true,
-        transports: ['polling', 'websocket'],
-        timeout: 10000,
-      });
+      socket = io({ path: '/socket.io', withCredentials: true, transports: ['polling', 'websocket'], timeout: 10000 });
       socket.on('connect', function () {
         socket.emit('chat:join', { pageId: pageId }, function (res) {
           if (!res || !res.ok) return;
           mode = 'live';
           setStatus('online', 'Live');
           applyHistory(res.history);
-          if (pollTimer) {
-            clearInterval(pollTimer);
-            pollTimer = null;
-          }
+          if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
         });
       });
-      socket.on('chat:message', function (msg) {
-        if (mode === 'live') addMsg(msg, false);
-      });
+      socket.on('chat:message', function (msg) { if (mode === 'live') addMsg(msg, false); });
     } catch (e) {}
   }
 
@@ -202,36 +157,18 @@
       var body = (input.value || '').trim();
       if (!body) return;
       function done(ok, err, msg) {
-        if (!ok) {
-          showErr(err || 'Send failed');
-          return;
-        }
+        if (!ok) { showErr(err || 'Send failed'); return; }
         showErr('');
         input.value = '';
         if (msg) addMsg(msg, true);
       }
       if (mode === 'live' && socket && socket.connected) {
         socket.emit('chat:message', { pageId: pageId, body: body }, function (res) {
-          if (res && res.ok) {
-            done(true, null, res.message);
-            return;
-          }
-          sendHttp(body)
-            .then(function (d) {
-              done(d && d.ok, d && d.error, d && d.message);
-            })
-            .catch(function () {
-              done(false, 'Send failed');
-            });
+          if (res && res.ok) { done(true, null, res.message); return; }
+          sendHttp(body).then(function (d) { done(d && d.ok, d && d.error, d && d.message); }).catch(function () { done(false, 'Send failed'); });
         });
       } else {
-        sendHttp(body)
-          .then(function (d) {
-            done(d && d.ok, d && d.error, d && d.message);
-          })
-          .catch(function () {
-            done(false, 'Send failed');
-          });
+        sendHttp(body).then(function (d) { done(d && d.ok, d && d.error, d && d.message); }).catch(function () { done(false, 'Send failed'); });
       }
     });
   }
