@@ -29,12 +29,28 @@ async function start() {
     const server = http.createServer(app);
     const io = new Server(server, {
       path: '/socket.io',
-      cors: { origin: false },
+      cors: {
+        origin: true,
+        credentials: true,
+      },
+      transports: ['polling', 'websocket'],
+      allowEIO3: true,
     });
 
     const sessionMiddleware = app.sessionMiddleware;
     if (sessionMiddleware) {
-      io.engine.use(sessionMiddleware);
+      const withSession = (req, res, next) => {
+        const fakeRes = res || {
+          getHeader() {},
+          setHeader() {},
+          end() {},
+        };
+        return sessionMiddleware(req, fakeRes, next);
+      };
+      io.engine.use(withSession);
+      io.use((socket, next) => {
+        withSession(socket.request, {}, next);
+      });
     }
 
     attachChatSocket(io);
