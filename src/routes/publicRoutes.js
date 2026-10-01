@@ -10,17 +10,23 @@ const commentController = require('../controllers/commentController');
 const { requireAuth } = require('../middleware/auth');
 const accountController = require('../controllers/accountController');
 const progressController = require('../controllers/progressController');
+const chatController = require('../controllers/chatController');
 
 router.get('/lessons', lessonController.listLessons);
 router.get('/lesson/:slug', lessonController.viewLesson);
 router.get('/lesson/:slug/progress', requireAuth, progressController.getProgressStatus);
 router.post('/lesson/:slug/complete', requireAuth, progressController.markComplete);
 router.post('/lesson/:slug/incomplete', requireAuth, progressController.markIncomplete);
+
+// Chat HTTP fallback (works even when Socket.IO fails on some hosts)
+router.get('/api/chat/:pageId', requireAuth, chatController.getHistory);
+router.post('/api/chat/:pageId', requireAuth, chatController.postMessage);
 router.get('/embed/:slug', lessonController.embedPage);
 
 // Comments – must be logged in
 router.post('/lesson/:slug/comments', requireAuth, commentController.createComment);
 router.post('/comments/:id/delete', requireAuth, commentController.deleteComment);
+
 
 // Account
 router.get('/account', requireAuth, accountController.showAccount);
@@ -38,7 +44,7 @@ router.post(
   accountController.updateAccount
 );
 
-// User settings (profile + theme)
+// User settings (theme light/dark)
 router.get('/account/settings', requireAuth, accountController.showUserSettings);
 router.post(
   '/account/settings',
