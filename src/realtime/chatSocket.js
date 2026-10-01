@@ -1,5 +1,6 @@
 /**
- * Socket.io chat rooms keyed by page id (same design as main).
+ * Socket.io chat rooms keyed by page id.
+ * Same design as main branch.
  */
 
 const chatModel = require('../models/chatModel');
@@ -12,9 +13,10 @@ function getSessionUser(socket) {
 
 function attachChatSocket(io) {
   io.on('connection', (socket) => {
+    const user = getSessionUser(socket);
+
     socket.on('chat:join', async (payload, ack) => {
       try {
-        const user = getSessionUser(socket);
         if (!user) {
           if (typeof ack === 'function') ack({ ok: false, error: 'Login required' });
           return;
@@ -37,7 +39,6 @@ function attachChatSocket(io) {
 
     socket.on('chat:message', async (payload, ack) => {
       try {
-        const user = getSessionUser(socket);
         if (!user) {
           if (typeof ack === 'function') ack({ ok: false, error: 'Login required' });
           return;

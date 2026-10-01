@@ -1,6 +1,7 @@
 (function () {
   var root = document.getElementById('platform-chat-root');
-  if (!root) return;
+  if (!root || typeof io === 'undefined') return;
+
   var pageId = root.getAttribute('data-page-id');
   var userId = root.getAttribute('data-user-id');
   if (!pageId || !userId) return;
@@ -15,7 +16,6 @@
   var badge = document.getElementById('platform-chat-badge');
   var seen = {};
   var unread = 0;
-  var pollTimer = null;
 
   function esc(s) {
     return String(s || '')
@@ -85,43 +85,6 @@
       updateBadge();
     }
   }
-  function applyHistory(history) {
-    if (list) list.innerHTML = '';
-    seen = {};
-    (history || []).forEach(function (m) {
-      addMsg(m, true);
-    });
-  }
-  function loadMessages() {
-    return fetch('/api/chat/' + encodeURIComponent(pageId), {
-      credentials: 'same-origin',
-      headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-    }).then(function (r) {
-      return r.json().then(function (d) {
-        return { status: r.status, d: d };
-      });
-    }).then(function (x) {
-      if (x.status === 401) throw new Error('Login required');
-      if (!x.d || !x.d.ok) throw new Error((x.d && x.d.error) || 'Load failed');
-      applyHistory(x.d.history);
-      setStatus('online', 'Online');
-      showErr('');
-    });
-  }
-  function sendMessage(body) {
-    return fetch('/api/chat/' + encodeURIComponent(pageId), {
-      method: 'POST',
-      credentials: 'same-origin',
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-        'X-Requested-With': 'XMLHttpRequest',
-      },
-      body: JSON.stringify({ body: body }),
-    }).then(function (r) {
-      return r.json();
-    });
-  }
 
   if (toggle)
     toggle.addEventListener('click', function () {
@@ -135,35 +98,56 @@
     });
 
   setStatus('offline', 'Connecting…');
-  loadMessages()
-    .then(function () {
-      pollTimer = setInterval(function () {
-        loadMessages().catch(function () {});
-      }, 3000);
-    })
-    .catch(function (e) {
-      setStatus('offline', 'Offline');
-      showErr(e.message || 'Chat unavailable');
+
+  var socket = io({
+    path: '/socket.io',
+    withCredentials: true,
+    transports: ['websocket', 'polling'],
+  });
+
+  socket.on('connect', function () {
+    setStatus('online', 'Online');
+    socket.emit('chat:join', { pageId: pageId }, function (res) {
+      if (!res || !res.ok) {
+        showErr((res && res.error) || 'Could not join');
+        setStatus('offline', 'Error');
+        return;
+      }
+      showErr('');
+      if (list) list.innerHTML = '';
+      seen = {};
+      (res.history || []).forEach(function (m) {
+        addMsg(m, true);
+      });
     });
+  });
+
+  socket.on('disconnect', function () {
+    setStatus('offline', 'Offline');
+  });
+
+  socket.on('connect_error', function () {
+    setStatus('offline', 'Offline');
+  });
+
+  socket.on('chat:message', function (msg) {
+    addMsg(msg, false);
+  });
 
   if (form && input) {
     form.addEventListener('submit', function (e) {
       e.preventDefault();
       var body = (input.value || '').trim();
       if (!body) return;
-      sendMessage(body)
-        .then(function (d) {
-          if (!d || !d.ok) {
-            showErr((d && d.error) || 'Send failed');
-            return;
-          }
-          showErr('');
-          input.value = '';
-          if (d.message) addMsg(d.message, true);
-        })
-        .catch(function () {
-          showErr('Send failed');
-        });
+      socket.emit('chat:message', { pageId: pageId, body: body }, function (res) {
+        if (!res || !res.ok) {
+          showErr((res && res.error) || 'Send failed');
+          return;
+        }
+        showErr('');
+        input.value = '';
+        if (res.message) addMsg(res.message, true);
+      });
     });
   }
 })();

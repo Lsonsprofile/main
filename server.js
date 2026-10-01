@@ -1,6 +1,7 @@
 /**
  * Application entry point.
  * Connects to MongoDB, starts HTTP + Socket.io for real-time lesson chat.
+ * Same chat design as main branch.
  */
 
 const fs = require('fs');
@@ -29,28 +30,12 @@ async function start() {
     const server = http.createServer(app);
     const io = new Server(server, {
       path: '/socket.io',
-      cors: {
-        origin: true,
-        credentials: true,
-      },
-      transports: ['polling', 'websocket'],
-      allowEIO3: true,
+      cors: { origin: false },
     });
 
     const sessionMiddleware = app.sessionMiddleware;
     if (sessionMiddleware) {
-      const withSession = (req, res, next) => {
-        const fakeRes = res || {
-          getHeader() {},
-          setHeader() {},
-          end() {},
-        };
-        return sessionMiddleware(req, fakeRes, next);
-      };
-      io.engine.use(withSession);
-      io.use((socket, next) => {
-        withSession(socket.request, {}, next);
-      });
+      io.engine.use(sessionMiddleware);
     }
 
     attachChatSocket(io);

@@ -4,13 +4,7 @@
 
   var pageId = root.getAttribute('data-page-id');
   var userId = root.getAttribute('data-user-id');
-  if (!pageId) {
-    console.warn('[chat] missing page id');
-    return;
-  }
-  if (!userId) {
-    return;
-  }
+  if (!pageId || !userId) return;
 
   var statusEl = document.getElementById('chat-status');
   var listEl = document.getElementById('chat-messages');
@@ -18,7 +12,6 @@
   var input = document.getElementById('chat-input');
   var errorEl = document.getElementById('chat-error');
   var seen = {};
-  var pollTimer = null;
 
   function setStatus(state, label) {
     if (!statusEl) return;
@@ -53,130 +46,96 @@
     }
   }
 
-  function appendMessage(msg) {
-    if (!listEl || !msg) return;
-    var id = String(msg.id || msg._id || '');
-    if (id && seen[id]) return;
-    if (id) seen[id] = true;
+  function appendMessage(msg, opts) {
+    if (!listEl || !msg || !msg.id) return;
+    if (seen[msg.id]) return;
+    seen[msg.id] = true;
 
     var mine = String(msg.userId) === String(userId);
     var row = document.createElement('div');
     row.className = 'chat-msg' + (mine ? ' is-mine' : '');
-    if (id) row.setAttribute('data-id', id);
+    row.setAttribute('data-id', msg.id);
     row.innerHTML =
-      '<div class="chat-msg-meta"><strong>' +
+      '<div class="chat-msg-meta">' +
+      '<strong>' +
       escapeHtml(msg.userName || 'User') +
-      '</strong><time>' +
+      '</strong>' +
+      '<time>' +
       escapeHtml(formatTime(msg.createdAt)) +
-      '</time></div><p class="chat-msg-body">' +
+      '</time>' +
+      '</div>' +
+      '<p class="chat-msg-body">' +
       escapeHtml(msg.body || '') +
       '</p>';
     listEl.appendChild(row);
-    listEl.scrollTop = listEl.scrollHeight;
+
+    if (!opts || opts.scroll !== false) {
+      listEl.scrollTop = listEl.scrollHeight;
+    }
   }
 
-  function applyHistory(history) {
-    if (listEl) listEl.innerHTML = '';
-    seen = {};
-    (history || []).forEach(appendMessage);
-    if (listEl) listEl.scrollTop = listEl.scrollHeight;
-  }
-
-  function loadMessages() {
-    return fetch('/api/chat/' + encodeURIComponent(pageId), {
-      method: 'GET',
-      credentials: 'same-origin',
-      headers: {
-        Accept: 'application/json',
-        'X-Requested-With': 'XMLHttpRequest',
-      },
-    }).then(function (r) {
-      return r.text().then(function (text) {
-        var d = null;
-        try {
-          d = text ? JSON.parse(text) : null;
-        } catch (e) {
-          throw new Error('Bad response from server');
-        }
-        return { status: r.status, d: d };
-      });
-    }).then(function (x) {
-      if (x.status === 401) throw new Error('Login required — please log in again');
-      if (x.status === 404) throw new Error('Chat API not found — restart server with latest code');
-      if (!x.d || !x.d.ok) throw new Error((x.d && x.d.error) || 'Could not load chat');
-      applyHistory(x.d.history);
-      setStatus('online', 'Online');
-      showError('');
-    });
-  }
-
-  function sendMessage(body) {
-    return fetch('/api/chat/' + encodeURIComponent(pageId), {
-      method: 'POST',
-      credentials: 'same-origin',
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-        'X-Requested-With': 'XMLHttpRequest',
-      },
-      body: JSON.stringify({ body: body }),
-    }).then(function (r) {
-      return r.text().then(function (text) {
-        var d = null;
-        try {
-          d = text ? JSON.parse(text) : null;
-        } catch (e) {
-          throw new Error('Bad response from server');
-        }
-        return { status: r.status, d: d };
-      });
-    });
+  if (typeof io === 'undefined') {
+    setStatus('offline', 'Chat unavailable');
+    showError('Real-time library failed to load. Run npm install and restart the server.');
+    return;
   }
 
   setStatus('connecting', 'Connecting…');
-  loadMessages()
-    .then(function () {
-      pollTimer = setInterval(function () {
-        loadMessages().catch(function () {});
-      }, 3000);
-    })
-    .catch(function (e) {
-      setStatus('offline', 'Offline');
-      showError(e.message || 'Chat unavailable');
-      console.error('[chat]', e);
+
+  var socket = io({
+    path: '/socket.io',
+    withCredentials: true,
+    transports: ['websocket', 'polling'],
+  });
+
+  socket.on('connect', function () {
+    setStatus('online', 'Live');
+    showError('');
+    socket.emit('chat:join', { pageId: pageId }, function (res) {
+      if (!res || !res.ok) {
+        setStatus('offline', 'Unavailable');
+        showError((res && res.error) || 'Could not join chat');
+        return;
+      }
+      if (listEl) listEl.innerHTML = '';
+      seen = {};
+      (res.history || []).forEach(function (m) {
+        appendMessage(m, { scroll: false });
+      });
+      if (listEl) listEl.scrollTop = listEl.scrollHeight;
     });
+  });
+
+  socket.on('disconnect', function () {
+    setStatus('offline', 'Reconnecting…');
+  });
+
+  socket.on('connect_error', function () {
+    setStatus('offline', 'Offline');
+  });
+
+  socket.on('chat:message', function (msg) {
+    appendMessage(msg);
+  });
 
   if (form && input) {
     form.addEventListener('submit', function (e) {
       e.preventDefault();
-      e.stopPropagation();
       var body = (input.value || '').trim();
       if (!body) return;
       input.disabled = true;
-      showError('');
-      sendMessage(body)
-        .then(function (x) {
-          input.disabled = false;
-          if (x.status === 401) {
-            showError('Login required — please log in again');
-            input.focus();
-            return;
-          }
-          if (!x.d || !x.d.ok) {
-            showError((x.d && x.d.error) || 'Could not send');
-            input.focus();
-            return;
-          }
-          input.value = '';
-          if (x.d.message) appendMessage(x.d.message);
+      socket.emit('chat:message', { pageId: pageId, body: body }, function (res) {
+        input.disabled = false;
+        if (!res || !res.ok) {
+          showError((res && res.error) || 'Could not send');
           input.focus();
-          setStatus('online', 'Online');
-        })
-        .catch(function (err) {
-          input.disabled = false;
-          showError(err.message || 'Could not send');
-          input.focus();
-        });
+          return;
+        }
+        showError('');
+        input.value = '';
+        input.focus();
+        if (res.message) appendMessage(res.message);
+      });
     });
   }
 })();
