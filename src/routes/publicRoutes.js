@@ -30,10 +30,24 @@ router.post('/api/chat/messages', requireAuth, async (req, res) => {
     const body = stripHtml(String((req.body && req.body.body) || ''), 1000);
     if (!body.trim()) return res.status(400).json({ ok: false, error: 'Empty message' });
     const pageId = (req.body && req.body.pageId) || null;
+    let avatarUrl = user.avatarUrl || '';
+    let userName = user.name || user.email || 'User';
+    try {
+      const userModel = require('../models/userModel');
+      const dbUser = await userModel.findById(user._id);
+      if (dbUser) {
+        if (dbUser.avatarUrl) avatarUrl = dbUser.avatarUrl;
+        if (dbUser.name) userName = dbUser.name;
+        if (req.session.user) {
+          req.session.user.avatarUrl = avatarUrl;
+          req.session.user.name = userName;
+        }
+      }
+    } catch (_) {}
     const message = await chatModel.createMessage({
       userId: user._id,
-      userName: user.name || user.email || 'User',
-      avatarUrl: user.avatarUrl || '',
+      userName,
+      avatarUrl,
       body,
       pageId,
     });
