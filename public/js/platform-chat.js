@@ -116,13 +116,18 @@
     var name = m.userName || 'User';
     var initial = esc(String(name).charAt(0).toUpperCase() || 'U');
     var url = m.avatarUrl ? String(m.avatarUrl) : '';
+    if (!url && m.userId) {
+      url = '/api/avatar/' + encodeURIComponent(String(m.userId));
+    }
     if (url) {
       return (
         '<div class="pc-avatar" title="' +
         esc(name) +
         '"><img src="' +
         safeUrl(url) +
-        '" alt="" class="pc-avatar-img"></div>'
+        '" alt="" class="pc-avatar-img" data-fallback="' +
+        initial +
+        '" onerror="var img=this;img.onerror=null;img.style.display=\'none\';var p=img.parentNode;if(p){p.classList.add(\'pc-avatar-fallback\');if(!p.querySelector(\'span\')){var s=document.createElement(\'span\');s.textContent=img.getAttribute(\'data-fallback\')||\'?\';p.appendChild(s);}}"></div>'
       );
     }
     return (
@@ -145,7 +150,6 @@
     var bubble = document.createElement('div');
     bubble.className = 'pc-bubble ' + (mine ? 'pc-bubble-mine' : 'pc-bubble-other');
 
-    // Always show a name so people know who is talking
     var nameEl = '';
     if (!m.deleted) {
       var displayName = mine ? 'You' : m.userName || 'User';
