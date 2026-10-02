@@ -9,10 +9,10 @@ const userModel = require('../models/userModel');
 
 function escapeAttr(value) {
   return String(value ?? '')
-    .replace(/&/g, '&')
-    .replace(/"/g, '"')
-    .replace(/</g, '<')
-    .replace(/>/g, '>');
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
 }
 
 function sessionUser(req) {
@@ -96,7 +96,6 @@ function buildUserFab(req) {
   font:700 .8rem/1 system-ui,sans-serif;background:#0f172a;color:#f8fafc;
   box-shadow:0 8px 22px rgba(15,23,42,.28);border:1px solid rgba(255,255,255,.1)
 }
-#platform-user-fab a:hover{filter:brightness(1.08)}
 .platform-user-fab-img,.platform-user-fab-fallback{
   width:2rem;height:2rem;border-radius:50%;object-fit:cover;display:grid;place-items:center;
   background:linear-gradient(135deg,#38bdf8,#6366f1);color:#fff;font:800 .75rem/1 system-ui,sans-serif;
@@ -106,10 +105,7 @@ function buildUserFab(req) {
 @media print{#platform-user-fab{display:none}}
 </style>
 <div id="platform-user-fab">
-  <a href="/account/settings" title="Settings & profile">
-    ${photo}
-    <span>Profile</span>
-  </a>
+  <a href="/account/settings" title="Settings & profile">${photo}<span>Profile</span></a>
 </div>`;
 }
 
@@ -150,32 +146,30 @@ function buildProgressWidget(req, page) {
   var status=document.getElementById("platform-progress-status");
   var busy=false,completed=false;
   function token(){return (window.__AUTH__&&window.__AUTH__.csrfToken)||"";}
-  function setStatus(t,k){if(!status)return;status.textContent=t||"";status.className=k?("is-"+k):"";}
+  function setStatus(t,k){if(!status)return;status.textContent=t||"";}
   function paint(){
-    if(completed){btn.textContent="Completed ✓";btn.classList.add("is-done");setStatus("You finished this page","ok");}
-    else{btn.textContent="Mark complete";btn.classList.remove("is-done");setStatus("Mark when you finish","ok");}
+    if(completed){btn.textContent="Completed ✓";btn.classList.add("is-done");setStatus("You finished this page");}
+    else{btn.textContent="Mark complete";btn.classList.remove("is-done");setStatus("Mark when you finish");}
   }
   function load(){
     fetch("/lesson/"+encodeURIComponent(slug)+"/progress",{credentials:"same-origin",headers:{Accept:"application/json","X-Requested-With":"XMLHttpRequest","X-CSRF-Token":token()}})
     .then(function(r){return r.json().then(function(d){return{r:r,d:d};});})
     .then(function(x){
-      if(x.r.status===401){setStatus("Log in to track progress","err");btn.disabled=true;return;}
-      if(!x.d||!x.d.ok){setStatus((x.d&&x.d.error)||"Could not load","err");return;}
+      if(x.r.status===401){setStatus("Log in to track progress");btn.disabled=true;return;}
+      if(!x.d||!x.d.ok){setStatus((x.d&&x.d.error)||"Could not load");return;}
       completed=!!x.d.completed;btn.disabled=false;paint();
-    }).catch(function(){setStatus("Could not load progress","err");});
+    }).catch(function(){setStatus("Could not load progress");});
   }
   btn.addEventListener("click",function(){
     if(busy)return;busy=true;btn.disabled=true;
     var path=completed?"/incomplete":"/complete";
-    setStatus(completed?"Updating…":"Saving…","");
     fetch("/lesson/"+encodeURIComponent(slug)+path,{method:"POST",credentials:"same-origin",headers:{Accept:"application/json","Content-Type":"application/json","X-Requested-With":"XMLHttpRequest","X-CSRF-Token":token()},body:JSON.stringify({_csrf:token()})})
     .then(function(r){return r.json().then(function(d){return{r:r,d:d};});})
     .then(function(x){
       busy=false;btn.disabled=false;
-      if(!x.d||!x.d.ok){setStatus((x.d&&x.d.error)||"Update failed","err");return;}
+      if(!x.d||!x.d.ok){setStatus((x.d&&x.d.error)||"Update failed");return;}
       completed=!!x.d.completed;paint();
-      setStatus(completed?"Saved as complete":"Marked incomplete","ok");
-    }).catch(function(){busy=false;btn.disabled=false;setStatus("Network error","err");});
+    }).catch(function(){busy=false;btn.disabled=false;setStatus("Network error");});
   });
   load();
 })();<\/script>`;
@@ -186,6 +180,7 @@ function buildChatWidget(req, page) {
   if (!user) return '';
   const pageId = page?._id ? escapeAttr(String(page._id)) : '';
   const userName = escapeAttr(user.name || 'You');
+
   return `
 <style id="platform-chat-style">
 #platform-chat-root{position:fixed;bottom:1.25rem;left:1.25rem;z-index:2147483646;font-family:system-ui,sans-serif;display:flex;flex-direction:column;align-items:flex-start;gap:.55rem}
@@ -200,58 +195,42 @@ function buildChatWidget(req, page) {
 #platform-chat-log{flex:1;overflow:auto;padding:.85rem;display:flex;flex-direction:column;gap:.65rem;background:#0b1220}
 .platform-chat-msg{background:#1e293b;border-radius:14px 14px 14px 4px;padding:.55rem .75rem;max-width:92%}
 .platform-chat-msg strong{display:block;font-size:.7rem;color:#7dd3fc;margin-bottom:.2rem}
-.platform-chat-msg span{font-size:.82rem;line-height:1.4;color:#e2e8f0;word-break:break-word}
+.platform-chat-msg span{font-size:.82rem;line-height:1.4;color:#e2e8f0;word-break:break-word;white-space:pre-wrap}
 #platform-chat-empty{margin:auto;text-align:center;color:#64748b;font-size:.8rem;padding:1.5rem}
 #platform-chat-err{color:#fecaca;font-size:.72rem;padding:.35rem .9rem}
 #platform-chat-err[hidden]{display:none}
 #platform-chat-form{display:flex;gap:.45rem;padding:.7rem .75rem;border-top:1px solid rgba(148,163,184,.12);background:#111827}
-#platform-chat-input{flex:1;border-radius:12px;border:1px solid #334155;background:#0b1220;color:#f8fafc;padding:.6rem .8rem;font:500 .85rem/1.25 system-ui,sans-serif}
+#platform-chat-input{flex:1;border-radius:12px;border:1px solid #334155;background:#0b1220;color:#f8fafc;padding:.6rem .8rem;font:500 .85rem/1.25 system-ui,sans-serif;outline:none}
 #platform-chat-send{border:0;border-radius:12px;background:linear-gradient(135deg,#22c55e,#16a34a);color:#052e16;font:800 .78rem/1 system-ui,sans-serif;padding:.6rem .95rem;cursor:pointer}
-@media (max-width:480px){#platform-chat-root{left:.75rem;right:.75rem;bottom:.85rem}#platform-chat-panel{width:100%;height:min(28rem,70vh)}}
+@media (max-width:480px){#platform-chat-root{left:.75rem;right:.75rem;bottom:.85rem;align-items:stretch}#platform-chat-panel{width:100%;height:min(28rem,70vh)}}
 @media print{#platform-chat-root{display:none}}
 </style>
 <div id="platform-chat-root" data-page-id="${pageId}" data-user="${userName}">
   <div id="platform-chat-panel" role="dialog" aria-label="Live chat">
     <div id="platform-chat-head">
-      <div><p id="platform-chat-title">Live chat</p><p id="platform-chat-status" data-state="offline">Connecting…</p></div>
-      <button type="button" id="platform-chat-close" aria-label="Close" onclick="var p=document.getElementById('platform-chat-panel');if(p)p.style.display='none';">×</button>
+      <div>
+        <p id="platform-chat-title">Live chat</p>
+        <p id="platform-chat-status" data-state="offline">Connecting…</p>
+      </div>
+      <button type="button" id="platform-chat-close" aria-label="Close"
+        onclick="var p=document.getElementById('platform-chat-panel');if(p)p.style.display='none';">×</button>
     </div>
-    <div id="platform-chat-log"><div id="platform-chat-empty">No messages yet.<br>Say hello 👋</div></div>
+    <div id="platform-chat-log">
+      <div id="platform-chat-empty">No messages yet.<br>Say hello 👋</div>
+    </div>
     <div id="platform-chat-err" hidden></div>
     <form id="platform-chat-form" action="javascript:void(0)" method="post" autocomplete="off" onsubmit="return false;">
       <input id="platform-chat-input" type="text" maxlength="500" placeholder="Type a message…" autocomplete="off">
       <button type="submit" id="platform-chat-send">Send</button>
     </form>
   </div>
-  <button type="button" id="platform-chat-toggle" aria-expanded="false" onclick="var p=document.getElementById('platform-chat-panel');if(!p)return false;var o=p.style.display==='flex';p.style.display=o?'none':'flex';p.style.flexDirection='column';this.setAttribute('aria-expanded',o?'false':'true');if(!o){var b=document.getElementById('platform-chat-badge');if(b){b.textContent='0';b.classList.remove('is-on');}var i=document.getElementById('platform-chat-input');if(i)try{i.focus()}catch(e){}}return false;">Chat <span id="platform-chat-badge">0</span></button>
+  <button type="button" id="platform-chat-toggle" aria-expanded="false"
+    onclick="var p=document.getElementById('platform-chat-panel');if(!p)return false;var o=p.style.display==='flex';p.style.display=o?'none':'flex';p.style.flexDirection='column';this.setAttribute('aria-expanded',o?'false':'true');if(!o){var b=document.getElementById('platform-chat-badge');if(b){b.textContent='0';b.classList.remove('is-on');}var i=document.getElementById('platform-chat-input');if(i)try{i.focus()}catch(e){}}return false;">
+    Chat <span id="platform-chat-badge">0</span>
+  </button>
 </div>
 <script src="/socket.io/socket.io.js"><\/script>
-<script>(function(){
-  var root=document.getElementById("platform-chat-root");if(!root)return;
-  var panel=document.getElementById("platform-chat-panel");
-  var form=document.getElementById("platform-chat-form");
-  var input=document.getElementById("platform-chat-input");
-  var log=document.getElementById("platform-chat-log");
-  var badge=document.getElementById("platform-chat-badge");
-  var status=document.getElementById("platform-chat-status");
-  var errEl=document.getElementById("platform-chat-err");
-  var empty=document.getElementById("platform-chat-empty");
-  var pageId=root.getAttribute("data-page-id")||"";
-  var socket=null;window.unread=0;
-  function esc(s){return String(s||"").replace(/&/g,"&").replace(/</g,"<").replace(/>/g,">").replace(/"/g,""");}
-  function showErr(t){if(!errEl)return;if(!t){errEl.hidden=true;errEl.textContent="";return;}errEl.hidden=false;errEl.textContent=t;}
-  function setStatus(state,label){if(!status)return;status.setAttribute("data-state",state);status.textContent=label;}
-  function isOpen(){return panel&&panel.style.display==="flex";}
-  function hideEmpty(){if(empty)empty.style.display="none";}
-  function addMsg(m){if(!log||!m)return;hideEmpty();var d=document.createElement("div");d.className="platform-chat-msg";d.innerHTML="<strong>"+esc(m.userName||m.name||"User")+"</strong><span>"+esc(m.body||"")+"</span>";log.appendChild(d);log.scrollTop=log.scrollHeight;}
-  if(form){form.addEventListener("submit",function(e){e.preventDefault();e.stopPropagation();var body=(input&&input.value||"").trim();if(!body)return false;if(!socket||!socket.connected){showErr("Chat offline");return false;}socket.emit("chat:message",{pageId:pageId,body:body},function(res){if(!res||!res.ok){showErr((res&&res.error)||"Send failed");return;}showErr("");if(input)input.value="";if(res.message)addMsg(res.message);});return false;});}
-  if(typeof io==="undefined"){setStatus("offline","Offline");return;}
-  socket=io({path:"/socket.io",withCredentials:true,transports:["websocket","polling"]});
-  socket.on("connect",function(){setStatus("online","Online");showErr("");socket.emit("chat:join",{pageId:pageId},function(res){if(res&&res.ok&&res.history&&res.history.length){hideEmpty();(res.history||[]).forEach(addMsg);}});});
-  socket.on("disconnect",function(){setStatus("offline","Offline");});
-  socket.on("connect_error",function(){setStatus("offline","Offline");});
-  socket.on("chat:message",function(m){addMsg(m);if(!isOpen()){window.unread=(window.unread||0)+1;if(badge){badge.textContent=String(window.unread);badge.classList.add("is-on");}}});
-})();<\/script>`;
+<script src="/js/platform-chat.js"><\/script>`;
 }
 
 async function prepareFullDocumentHtml(req, htmlSource, page) {
@@ -259,7 +238,11 @@ async function prepareFullDocumentHtml(req, htmlSource, page) {
   if (!html.trim()) {
     html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Empty</title></head><body style="margin:0;font-family:system-ui;padding:2rem;color:#64748b"><p>No HTML yet.</p></body></html>';
   }
-  html = html.replace(/\bwindow\.parent\b/g, 'window.self').replace(/\bwindow\.top\b/g, 'window.self').replace(/\bwindow\.frameElement\b/g, 'null');
+  html = html
+    .replace(/\bwindow\.parent\b/g, 'window.self')
+    .replace(/\bwindow\.top\b/g, 'window.self')
+    .replace(/\bwindow\.frameElement\b/g, 'null');
+
   let freshUser = null;
   const session = sessionUser(req);
   if (session && session._id) {
@@ -281,8 +264,18 @@ async function prepareFullDocumentHtml(req, htmlSource, page) {
       }
     } catch (e) {}
   }
-  html = injectEarly(html, buildThemeBootstrap(req, freshUser) + buildAuthBootstrap(req, freshUser));
-  const widgets = buildProgressWidget(req, page) + buildChatWidget(req, page) + buildUserFab(req) + buildAdminFab(req);
+
+  html = injectEarly(
+    html,
+    buildThemeBootstrap(req, freshUser) + buildAuthBootstrap(req, freshUser)
+  );
+
+  const widgets =
+    buildProgressWidget(req, page) +
+    buildChatWidget(req, page) +
+    buildUserFab(req) +
+    buildAdminFab(req);
+
   return injectBeforeBodyClose(html, widgets);
 }
 
