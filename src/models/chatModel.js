@@ -1,6 +1,6 @@
 /**
  * Site-wide real-time chat (shared across all pages).
- * Soft-delete + edit (WhatsApp-style).
+ * Soft-delete + edit (WhatsApp-style). Stores name + avatar snapshot.
  */
 
 const { ObjectId } = require('mongodb');
@@ -28,6 +28,7 @@ function serialize(m) {
     id: String(m._id),
     userId: String(m.userId),
     userName: m.userName || 'User',
+    avatarUrl: m.avatarUrl ? String(m.avatarUrl) : '',
     body: deleted ? DELETED_PLACEHOLDER : m.body,
     createdAt: m.createdAt ? new Date(m.createdAt).toISOString() : null,
     deleted,
@@ -36,7 +37,7 @@ function serialize(m) {
   };
 }
 
-async function createMessage({ userId, userName, body, pageId }) {
+async function createMessage({ userId, userName, avatarUrl, body, pageId }) {
   const db = getDb();
   const uid = toObjectId(userId);
   if (!uid) return null;
@@ -50,6 +51,7 @@ async function createMessage({ userId, userName, body, pageId }) {
     scope: GLOBAL_SCOPE,
     userId: uid,
     userName: String(userName || 'User').slice(0, 80),
+    avatarUrl: String(avatarUrl || '').slice(0, 2000),
     body: cleanBody,
     createdAt: new Date(),
     deleted: false,

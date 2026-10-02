@@ -64,6 +64,7 @@ function attachChatSocket(io) {
         const message = await chatModel.createMessage({
           userId: user._id,
           userName: user.name || user.email || 'User',
+          avatarUrl: user.avatarUrl || '',
           body,
           pageId,
         });
