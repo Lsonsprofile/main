@@ -3,6 +3,7 @@
  */
 
 const chatModel = require('../models/chatModel');
+const userModel = require('../models/userModel');
 const { stripHtml } = require('../middleware/security');
 
 const SITE_ROOM = 'site:global';
@@ -61,10 +62,25 @@ function attachChatSocket(io) {
         socket.data.lastMsgAt = now;
 
         const pageId = (payload && payload.pageId) || socket.data.pageId || null;
+        let avatarUrl = user.avatarUrl || '';
+        let userName = user.name || user.email || 'User';
+        if (!avatarUrl || !user.name) {
+          try {
+            const dbUser = await userModel.findById(user._id);
+            if (dbUser) {
+              if (dbUser.avatarUrl) avatarUrl = dbUser.avatarUrl;
+              if (dbUser.name) userName = dbUser.name;
+              if (socket.request.session && socket.request.session.user) {
+                socket.request.session.user.avatarUrl = avatarUrl;
+                socket.request.session.user.name = userName;
+              }
+            }
+          } catch (_) {}
+        }
         const message = await chatModel.createMessage({
           userId: user._id,
-          userName: user.name || user.email || 'User',
-          avatarUrl: user.avatarUrl || '',
+          userName,
+          avatarUrl,
           body,
           pageId,
         });

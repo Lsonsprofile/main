@@ -1,6 +1,5 @@
 /**
- * Site-wide real-time chat (shared across all pages).
- * Soft-delete + edit (WhatsApp-style). Stores name + avatar snapshot.
+ * Site-wide real-time chat. Soft-delete + edit. Name + avatar snapshot.
  */
 
 const { ObjectId } = require('mongodb');
@@ -65,6 +64,42 @@ async function createMessage({ userId, userName, avatarUrl, body, pageId }) {
   return serialize({ ...doc, _id: result.insertedId });
 }
 
+async function enrichAvatars(messages) {
+  if (!messages || !messages.length) return messages || [];
+  const db = getDb();
+  const needIds = [];
+  const seen = new Set();
+  for (const m of messages) {
+    if (m && m.userId && !m.avatarUrl) {
+      const id = String(m.userId);
+      if (!seen.has(id)) {
+        seen.add(id);
+        const oid = toObjectId(id);
+        if (oid) needIds.push(oid);
+      }
+    }
+  }
+  if (!needIds.length) return messages;
+
+  const users = await db
+    .collection('users')
+    .find({ _id: { $in: needIds } })
+    .project({ avatarUrl: 1, name: 1 })
+    .toArray();
+  const byId = new Map(users.map((u) => [String(u._id), u]));
+
+  return messages.map((m) => {
+    if (!m || m.avatarUrl) return m;
+    const u = byId.get(String(m.userId));
+    if (!u) return m;
+    return {
+      ...m,
+      avatarUrl: u.avatarUrl ? String(u.avatarUrl) : '',
+      userName: m.userName || u.name || 'User',
+    };
+  });
+}
+
 async function findRecent({ limit = 100 } = {}) {
   const db = getDb();
   const rows = await db
@@ -76,7 +111,8 @@ async function findRecent({ limit = 100 } = {}) {
     .limit(Math.min(Number(limit) || 100, 200))
     .toArray();
 
-  return rows.reverse().map(serialize);
+  const list = rows.reverse().map(serialize);
+  return enrichAvatars(list);
 }
 
 async function findById(id) {
