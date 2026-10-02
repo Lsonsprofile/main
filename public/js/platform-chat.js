@@ -28,6 +28,13 @@
       .replace(/>/g, '>')
       .replace(/"/g, '"');
   }
+  function safeUrl(u) {
+    return String(u || '')
+      .replace(/&/g, '&')
+      .replace(/"/g, '"')
+      .replace(/</g, '<')
+      .replace(/>/g, '>');
+  }
   function token() {
     return (window.__AUTH__ && window.__AUTH__.csrfToken) || '';
   }
@@ -108,12 +115,13 @@
   function avatarHtml(m) {
     var name = m.userName || 'User';
     var initial = esc(String(name).charAt(0).toUpperCase() || 'U');
-    if (m.avatarUrl) {
+    var url = m.avatarUrl ? String(m.avatarUrl) : '';
+    if (url) {
       return (
         '<div class="pc-avatar" title="' +
         esc(name) +
         '"><img src="' +
-        esc(m.avatarUrl) +
+        safeUrl(url) +
         '" alt="" class="pc-avatar-img"></div>'
       );
     }
@@ -137,9 +145,11 @@
     var bubble = document.createElement('div');
     bubble.className = 'pc-bubble ' + (mine ? 'pc-bubble-mine' : 'pc-bubble-other');
 
+    // Always show a name so people know who is talking
     var nameEl = '';
-    if (!mine && !m.deleted) {
-      nameEl = '<div class="pc-name">' + esc(m.userName || 'User') + '</div>';
+    if (!m.deleted) {
+      var displayName = mine ? 'You' : m.userName || 'User';
+      nameEl = '<div class="pc-name">' + esc(displayName) + '</div>';
     }
 
     var bodyClass = m.deleted ? 'pc-body pc-body-deleted' : 'pc-body';
