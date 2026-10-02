@@ -9,10 +9,10 @@ const userModel = require('../models/userModel');
 
 function escapeAttr(value) {
   return String(value ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/"/g, '&quot;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
+    .replace(/&/g, '&')
+    .replace(/"/g, '"')
+    .replace(/</g, '<')
+    .replace(/>/g, '>');
 }
 
 function sessionUser(req) {
@@ -68,6 +68,7 @@ function buildAuthBootstrap(req, freshUser) {
   const user = freshUser || session;
   const payload = {
     loggedIn: Boolean(user || session),
+    userId: user?._id ? String(user._id) : session?._id ? String(session._id) : '',
     name: user?.name ? String(user.name) : session?.name ? String(session.name) : '',
     role: user?.role ? String(user.role) : session?.role ? String(session.role) : '',
     isAdmin: Boolean((user || session)?.role === 'admin'),
@@ -146,7 +147,7 @@ function buildProgressWidget(req, page) {
   var status=document.getElementById("platform-progress-status");
   var busy=false,completed=false;
   function token(){return (window.__AUTH__&&window.__AUTH__.csrfToken)||"";}
-  function setStatus(t,k){if(!status)return;status.textContent=t||"";}
+  function setStatus(t){if(!status)return;status.textContent=t||"";}
   function paint(){
     if(completed){btn.textContent="Completed ✓";btn.classList.add("is-done");setStatus("You finished this page");}
     else{btn.textContent="Mark complete";btn.classList.remove("is-done");setStatus("Mark when you finish");}
@@ -182,29 +183,7 @@ function buildChatWidget(req, page) {
   const userName = escapeAttr(user.name || 'You');
 
   return `
-<style id="platform-chat-style">
-#platform-chat-root{position:fixed;bottom:1.25rem;left:1.25rem;z-index:2147483646;font-family:system-ui,sans-serif;display:flex;flex-direction:column;align-items:flex-start;gap:.55rem}
-#platform-chat-toggle{display:inline-flex;align-items:center;gap:.5rem;padding:.7rem 1.15rem;border-radius:999px;border:0;cursor:pointer;background:linear-gradient(135deg,#0ea5e9,#2563eb);color:#fff;font:700 .85rem/1 system-ui,sans-serif;box-shadow:0 10px 28px rgba(37,99,235,.4);position:relative}
-#platform-chat-badge{display:none;position:absolute;top:-5px;right:-5px;min-width:1.2rem;height:1.2rem;padding:0 .35rem;border-radius:999px;background:#ef4444;color:#fff;font:700 .65rem/1.2rem system-ui,sans-serif;text-align:center;border:2px solid #fff}
-#platform-chat-badge.is-on{display:inline-block}
-#platform-chat-panel{width:min(22rem,calc(100vw - 1.75rem));height:26rem;display:none;flex-direction:column;background:#0b1220;color:#f1f5f9;border-radius:18px;border:1px solid rgba(148,163,184,.18);box-shadow:0 24px 56px rgba(2,6,23,.55);overflow:hidden}
-#platform-chat-head{display:flex;align-items:center;justify-content:space-between;padding:.85rem 1rem;background:#111827;border-bottom:1px solid rgba(148,163,184,.12)}
-#platform-chat-title{font:800 .9rem/1.2 system-ui,sans-serif;margin:0;color:#f8fafc}
-#platform-chat-status{font:600 .68rem/1.2 system-ui,sans-serif;color:#94a3b8;margin:.15rem 0 0}
-#platform-chat-close{border:0;background:rgba(148,163,184,.1);color:#94a3b8;width:1.85rem;height:1.85rem;border-radius:50%;cursor:pointer}
-#platform-chat-log{flex:1;overflow:auto;padding:.85rem;display:flex;flex-direction:column;gap:.65rem;background:#0b1220}
-.platform-chat-msg{background:#1e293b;border-radius:14px 14px 14px 4px;padding:.55rem .75rem;max-width:92%}
-.platform-chat-msg strong{display:block;font-size:.7rem;color:#7dd3fc;margin-bottom:.2rem}
-.platform-chat-msg span{font-size:.82rem;line-height:1.4;color:#e2e8f0;word-break:break-word;white-space:pre-wrap}
-#platform-chat-empty{margin:auto;text-align:center;color:#64748b;font-size:.8rem;padding:1.5rem}
-#platform-chat-err{color:#fecaca;font-size:.72rem;padding:.35rem .9rem}
-#platform-chat-err[hidden]{display:none}
-#platform-chat-form{display:flex;gap:.45rem;padding:.7rem .75rem;border-top:1px solid rgba(148,163,184,.12);background:#111827}
-#platform-chat-input{flex:1;border-radius:12px;border:1px solid #334155;background:#0b1220;color:#f8fafc;padding:.6rem .8rem;font:500 .85rem/1.25 system-ui,sans-serif;outline:none}
-#platform-chat-send{border:0;border-radius:12px;background:linear-gradient(135deg,#22c55e,#16a34a);color:#052e16;font:800 .78rem/1 system-ui,sans-serif;padding:.6rem .95rem;cursor:pointer}
-@media (max-width:480px){#platform-chat-root{left:.75rem;right:.75rem;bottom:.85rem;align-items:stretch}#platform-chat-panel{width:100%;height:min(28rem,70vh)}}
-@media print{#platform-chat-root{display:none}}
-</style>
+<link rel="stylesheet" href="/css/platform-chat.css">
 <div id="platform-chat-root" data-page-id="${pageId}" data-user="${userName}">
   <div id="platform-chat-panel" role="dialog" aria-label="Live chat">
     <div id="platform-chat-head">
@@ -250,6 +229,7 @@ async function prepareFullDocumentHtml(req, htmlSource, page) {
       const dbUser = await userModel.findById(session._id);
       if (dbUser) {
         freshUser = {
+          _id: dbUser._id,
           name: dbUser.name,
           email: dbUser.email,
           role: dbUser.role,
