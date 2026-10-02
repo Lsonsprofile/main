@@ -8,24 +8,25 @@
 #platform-chat-status{font:600 .7rem/1.2 system-ui,sans-serif;color:#8696a0;margin:.15rem 0 0}
 #platform-chat-status[data-state="online"]{color:#25d366}
 #platform-chat-close{border:0;background:transparent;color:#aebac1;width:1.85rem;height:1.85rem;border-radius:50%;cursor:pointer;font-size:1.25rem}
-#platform-chat-log{flex:1;overflow:auto;padding:.85rem .75rem;display:flex;flex-direction:column;gap:.35rem;background:#0b141a;background-image:radial-gradient(ellipse at top,rgba(37,211,102,.04),transparent 55%)}
+#platform-chat-log{flex:1;overflow:auto;padding:.85rem .75rem;display:flex;flex-direction:column;gap:.35rem;background:#0b141a}
 .pc-row{display:flex;width:100%;align-items:flex-end;gap:.4rem}
 .pc-row-mine{justify-content:flex-end}
 .pc-row-other{justify-content:flex-start}
 .pc-bubble{max-width:82%;padding:.45rem .65rem .3rem;border-radius:10px;position:relative;box-shadow:0 1px 1px rgba(0,0,0,.2)}
 .pc-bubble-mine{background:#005c4b;border-top-right-radius:2px}
 .pc-bubble-other{background:#202c33;border-top-left-radius:2px}
-.pc-name{font:700 .72rem/1.2 system-ui,sans-serif;color:#53bdeb;margin-bottom:.15rem;display:flex;align-items:center;gap:.35rem}
+.pc-name{font:700 .78rem/1.2 system-ui,sans-serif;color:#53bdeb;margin-bottom:.2rem;display:block}
 .pc-body{font:400 .9rem/1.35 system-ui,sans-serif;color:#e9edef;word-break:break-word;white-space:pre-wrap}
 .pc-body-deleted{font-style:italic;color:#8696a0}
 .pc-meta{display:flex;justify-content:flex-end;align-items:center;gap:.35rem;margin-top:.15rem}
 .pc-time{font:500 .65rem/1 system-ui,sans-serif;color:#8696a0}
 .pc-edited{font:500 .65rem/1 system-ui,sans-serif;color:#8696a0;font-style:italic}
 .pc-avatar{
-  width:2rem;height:2rem;border-radius:50%;flex-shrink:0;overflow:hidden;
+  width:2.35rem;height:2.35rem;border-radius:50%;flex-shrink:0;overflow:hidden;
   background:linear-gradient(135deg,#53bdeb,#128c7e);
   display:grid;place-items:center;
-  box-shadow:0 1px 2px rgba(0,0,0,.25);
+  box-shadow:0 1px 3px rgba(0,0,0,.35);
+  border:2px solid rgba(255,255,255,.12);
 }
 .pc-avatar-img{width:100%;height:100%;object-fit:cover;display:block}
 .pc-avatar-fallback span{font:800 .75rem/1 system-ui,sans-serif;color:#fff}
