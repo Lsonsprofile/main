@@ -37,10 +37,27 @@ const upload = multer({
   limits: { fileSize: 3 * 1024 * 1024 },
 });
 
-/** Public URL for an uploaded avatar (served from /public/uploads/avatars). */
+/**
+ * Store avatar in MongoDB as a data-URL so it survives host disk resets (Railway).
+ * Falls back to a public file path if the image is too large.
+ */
 function fileToAvatarUrl(file) {
-  if (!file || !file.filename) return '';
-  return '/uploads/avatars/' + file.filename;
+  if (!file || !file.path) {
+    if (file && file.filename) return '/uploads/avatars/' + file.filename;
+    return '';
+  }
+  try {
+    const buf = fs.readFileSync(file.path);
+    if (buf.length > 700000) {
+      return '/uploads/avatars/' + file.filename;
+    }
+    const mime = file.mimetype || 'image/jpeg';
+    const b64 = buf.toString('base64');
+    return 'data:' + mime + ';base64,' + b64;
+  } catch (e) {
+    if (file.filename) return '/uploads/avatars/' + file.filename;
+    return '';
+  }
 }
 
 function syncSessionUser(req, user) {
@@ -151,6 +168,7 @@ async function updateUserSettings(req, res, next) {
     const updates = { theme };
     if (name) updates.name = name;
 
+    // Only change avatar when user uploads or explicitly removes — never clear otherwise
     if (removeAvatar) {
       updates.avatarUrl = '';
     } else if (req.file) {
