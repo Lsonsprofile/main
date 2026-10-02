@@ -107,7 +107,7 @@ function attachChatSocket(io) {
           return;
         }
         const id = payload && payload.id;
-        const message = await chatModel.softDeleteMessage(id, {
+        let message = await chatModel.softDeleteMessage(id, {
           userId: user._id,
           isAdmin: user.role === 'admin',
         });
@@ -115,6 +115,9 @@ function attachChatSocket(io) {
           if (typeof ack === 'function') ack({ ok: false, error: 'Cannot delete' });
           return;
         }
+        try {
+          message = await chatModel.enrichOne(message);
+        } catch (_) {}
         io.to(SITE_ROOM).emit('chat:deleted', message);
         if (typeof ack === 'function') ack({ ok: true, message });
       } catch (err) {
@@ -136,7 +139,7 @@ function attachChatSocket(io) {
           if (typeof ack === 'function') ack({ ok: false, error: 'Empty message' });
           return;
         }
-        const message = await chatModel.editMessage(id, {
+        let message = await chatModel.editMessage(id, {
           userId: user._id,
           isAdmin: user.role === 'admin',
           body,
@@ -145,6 +148,9 @@ function attachChatSocket(io) {
           if (typeof ack === 'function') ack({ ok: false, error: 'Cannot edit' });
           return;
         }
+        try {
+          message = await chatModel.enrichOne(message);
+        } catch (_) {}
         io.to(SITE_ROOM).emit('chat:edited', message);
         if (typeof ack === 'function') ack({ ok: true, message });
       } catch (err) {

@@ -11,6 +11,33 @@ const accountController = require('../controllers/accountController');
 const progressController = require('../controllers/progressController');
 const chatModel = require('../models/chatModel');
 
+// Serve profile photo without embedding data-URLs in chat packets
+router.get('/api/avatar/:userId', requireAuth, async (req, res) => {
+  try {
+    const userModel = require('../models/userModel');
+    const user = await userModel.findById(req.params.userId);
+    if (!user || !user.avatarUrl) {
+      return res.status(404).end();
+    }
+    const url = String(user.avatarUrl);
+    if (url.startsWith('data:')) {
+      const match = url.match(/^data:([^;]+);base64,([\s\S]+)$/);
+      if (!match) return res.status(404).end();
+      const buf = Buffer.from(match[2], 'base64');
+      res.setHeader('Content-Type', match[1] || 'image/jpeg');
+      res.setHeader('Cache-Control', 'private, max-age=300');
+      return res.send(buf);
+    }
+    if (url.startsWith('/')) {
+      return res.redirect(url);
+    }
+    return res.status(404).end();
+  } catch (err) {
+    console.error('GET /api/avatar', err && err.message);
+    return res.status(500).end();
+  }
+});
+
 router.get('/api/chat/messages', requireAuth, async (req, res) => {
   try {
     const history = await chatModel.findRecent({ limit: 120 });

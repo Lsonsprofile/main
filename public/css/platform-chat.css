@@ -92,13 +92,7 @@ button#platform-chat-toggle{
 .pc-meta{display:flex;justify-content:flex-end;align-items:center;gap:.35rem;margin-top:.15rem}
 .pc-time{font:500 .65rem/1 system-ui,sans-serif;color:#8696a0}
 .pc-edited{font:500 .65rem/1 system-ui,sans-serif;color:#8696a0;font-style:italic}
-.pc-avatar{
-  width:2.35rem;height:2.35rem;border-radius:50%;flex-shrink:0;overflow:hidden;
-  background:linear-gradient(135deg,#53bdeb,#128c7e);
-  display:grid;place-items:center;
-  box-shadow:0 1px 3px rgba(0,0,0,.35);
-  border:2px solid rgba(255,255,255,.12);
-}
+.pc-avatar{width:2.35rem;height:2.35rem;border-radius:50%;flex-shrink:0;overflow:hidden;background:linear-gradient(135deg,#53bdeb,#128c7e);display:grid;place-items:center;box-shadow:0 1px 3px rgba(0,0,0,.35);border:2px solid rgba(255,255,255,.12)}
 .pc-avatar-img{width:100%;height:100%;object-fit:cover;display:block}
 .pc-avatar-fallback span{font:800 .75rem/1 system-ui,sans-serif;color:#fff}
 .pc-row-mine .pc-avatar{order:2}
@@ -115,6 +109,7 @@ button#platform-chat-toggle{
 #platform-chat-menu button[data-act="delete"]{color:#f87171}
 
 @media (max-width:480px){
+<<<<<<< HEAD
   #platform-chat-root{
     left:.5rem;
     right:auto;
@@ -136,6 +131,11 @@ button#platform-chat-toggle{
     height:min(34rem,82vh);
     max-width:calc(100vw - 1rem);
   }
+=======
+  #platform-chat-root{left:.5rem;right:auto;bottom:.65rem;align-items:flex-start;width:auto;max-width:calc(100vw - 1rem)}
+  #platform-chat-toggle{width:auto;max-width:none;align-self:flex-start;flex:0 0 auto}
+  #platform-chat-panel{width:min(24rem,calc(100vw - 1rem));height:min(34rem,82vh);max-width:calc(100vw - 1rem)}
+>>>>>>> 79429165f0f2e0531d0216ff7081fd837979d320
 }
 
 @media print{

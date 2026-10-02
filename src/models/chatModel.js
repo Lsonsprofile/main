@@ -1,5 +1,6 @@
 /**
- * Site-wide real-time chat. Soft-delete + edit. Live avatar from user profile.
+ * Site-wide real-time chat. Soft-delete + edit.
+ * Avatars exposed as short /api/avatar/:userId URLs (not data-URLs).
  */
 
 const { ObjectId } = require('mongodb');
@@ -46,7 +47,6 @@ async function createMessage({ userId, userName, avatarUrl, body, pageId }) {
     .slice(0, 1000);
   if (!cleanBody) return null;
 
-  // Only persist short path avatars. data-URLs are loaded live via enrichAvatars.
   const rawAvatar = String(avatarUrl || '');
   const storedAvatar =
     rawAvatar && rawAvatar.length <= 500 && !rawAvatar.startsWith('data:')
@@ -98,10 +98,16 @@ async function enrichAvatars(messages) {
   return messages.map((m) => {
     if (!m) return m;
     const u = byId.get(String(m.userId));
-    if (!u) return m;
+    if (!u) {
+      if (m.userId) {
+        return { ...m, avatarUrl: '/api/avatar/' + String(m.userId) };
+      }
+      return m;
+    }
+    const hasPhoto = Boolean(u.avatarUrl && String(u.avatarUrl).trim());
     return {
       ...m,
-      avatarUrl: u.avatarUrl ? String(u.avatarUrl) : m.avatarUrl || '',
+      avatarUrl: hasPhoto ? '/api/avatar/' + String(u._id) : '',
       userName: u.name ? String(u.name) : m.userName || 'User',
     };
   });
