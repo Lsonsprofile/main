@@ -11,7 +11,6 @@ const accountController = require('../controllers/accountController');
 const progressController = require('../controllers/progressController');
 const chatModel = require('../models/chatModel');
 
-// ---- Site-wide chat ----
 router.get('/api/chat/messages', requireAuth, async (req, res) => {
   try {
     const history = await chatModel.findRecent({ limit: 120 });
@@ -34,6 +33,7 @@ router.post('/api/chat/messages', requireAuth, async (req, res) => {
     const message = await chatModel.createMessage({
       userId: user._id,
       userName: user.name || user.email || 'User',
+      avatarUrl: user.avatarUrl || '',
       body,
       pageId,
     });
