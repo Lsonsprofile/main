@@ -1,8 +1,8 @@
 /**
- * Application entry point.
- * Connects to MongoDB, starts HTTP + Socket.io for real-time chat.
+ * HTTP + Socket.io entrypoint.
  */
 
+require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
 const http = require('http');
@@ -15,12 +15,10 @@ const PORT = process.env.PORT || 3000;
 
 async function start() {
   try {
-    const uploadDir = path.join(__dirname, 'public', 'uploads', 'avatars');
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-
     await connect();
+
+    const uploadsDir = path.join(__dirname, 'public', 'uploads', 'avatars');
+    fs.mkdirSync(uploadsDir, { recursive: true });
 
     const server = http.createServer(app);
     const io = new Server(server, {
@@ -28,6 +26,7 @@ async function start() {
       cors: { origin: false },
       transports: ['websocket', 'polling'],
       allowEIO3: true,
+      maxHttpBufferSize: 5e6,
     });
 
     const sessionMiddleware = app.sessionMiddleware;
@@ -40,16 +39,15 @@ async function start() {
       });
     }
 
-    attachChatSocket(io);
     app.set('io', io);
+    attachChatSocket(io);
+    console.log('Real-time chat: enabled (Socket.io)');
 
-    server.listen(PORT, '0.0.0.0', () => {
+    server.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
-      console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-      console.log('Real-time chat: enabled (Socket.io)');
     });
   } catch (err) {
-    console.error('Failed to start server:', err.message);
+    console.error('Failed to start server:', err);
     process.exit(1);
   }
 }
