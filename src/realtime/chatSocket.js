@@ -64,20 +64,19 @@ function attachChatSocket(io) {
         const pageId = (payload && payload.pageId) || socket.data.pageId || null;
         let avatarUrl = user.avatarUrl || '';
         let userName = user.name || user.email || 'User';
-        if (!avatarUrl || !user.name) {
-          try {
-            const dbUser = await userModel.findById(user._id);
-            if (dbUser) {
-              if (dbUser.avatarUrl) avatarUrl = dbUser.avatarUrl;
-              if (dbUser.name) userName = dbUser.name;
-              if (socket.request.session && socket.request.session.user) {
-                socket.request.session.user.avatarUrl = avatarUrl;
-                socket.request.session.user.name = userName;
-              }
+        try {
+          const dbUser = await userModel.findById(user._id);
+          if (dbUser) {
+            if (dbUser.avatarUrl) avatarUrl = dbUser.avatarUrl;
+            if (dbUser.name) userName = dbUser.name;
+            if (socket.request.session && socket.request.session.user) {
+              socket.request.session.user.avatarUrl = avatarUrl;
+              socket.request.session.user.name = userName;
             }
-          } catch (_) {}
-        }
-        const message = await chatModel.createMessage({
+          }
+        } catch (_) {}
+
+        let message = await chatModel.createMessage({
           userId: user._id,
           userName,
           avatarUrl,
@@ -88,6 +87,9 @@ function attachChatSocket(io) {
           if (typeof ack === 'function') ack({ ok: false, error: 'Invalid message' });
           return;
         }
+        try {
+          message = await chatModel.enrichOne(message);
+        } catch (_) {}
 
         io.to(SITE_ROOM).emit('chat:message', message);
         if (typeof ack === 'function') ack({ ok: true, message });

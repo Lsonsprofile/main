@@ -44,7 +44,7 @@ router.post('/api/chat/messages', requireAuth, async (req, res) => {
         }
       }
     } catch (_) {}
-    const message = await chatModel.createMessage({
+    let message = await chatModel.createMessage({
       userId: user._id,
       userName,
       avatarUrl,
@@ -52,6 +52,9 @@ router.post('/api/chat/messages', requireAuth, async (req, res) => {
       pageId,
     });
     if (!message) return res.status(400).json({ ok: false, error: 'Invalid message' });
+    try {
+      message = await chatModel.enrichOne(message);
+    } catch (_) {}
     try {
       const io = req.app.get('io');
       if (io) io.to('site:global').emit('chat:message', message);

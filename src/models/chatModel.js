@@ -1,5 +1,5 @@
 /**
- * Site-wide real-time chat. Soft-delete + edit. Name + avatar snapshot.
+ * Site-wide real-time chat. Soft-delete + edit. Live avatar from user profile.
  */
 
 const { ObjectId } = require('mongodb');
@@ -46,11 +46,18 @@ async function createMessage({ userId, userName, avatarUrl, body, pageId }) {
     .slice(0, 1000);
   if (!cleanBody) return null;
 
+  // Only persist short path avatars. data-URLs are loaded live via enrichAvatars.
+  const rawAvatar = String(avatarUrl || '');
+  const storedAvatar =
+    rawAvatar && rawAvatar.length <= 500 && !rawAvatar.startsWith('data:')
+      ? rawAvatar
+      : '';
+
   const doc = {
     scope: GLOBAL_SCOPE,
     userId: uid,
     userName: String(userName || 'User').slice(0, 80),
-    avatarUrl: String(avatarUrl || '').slice(0, 2000),
+    avatarUrl: storedAvatar,
     body: cleanBody,
     createdAt: new Date(),
     deleted: false,
@@ -70,7 +77,7 @@ async function enrichAvatars(messages) {
   const needIds = [];
   const seen = new Set();
   for (const m of messages) {
-    if (m && m.userId && !m.avatarUrl) {
+    if (m && m.userId) {
       const id = String(m.userId);
       if (!seen.has(id)) {
         seen.add(id);
@@ -89,15 +96,21 @@ async function enrichAvatars(messages) {
   const byId = new Map(users.map((u) => [String(u._id), u]));
 
   return messages.map((m) => {
-    if (!m || m.avatarUrl) return m;
+    if (!m) return m;
     const u = byId.get(String(m.userId));
     if (!u) return m;
     return {
       ...m,
-      avatarUrl: u.avatarUrl ? String(u.avatarUrl) : '',
-      userName: m.userName || u.name || 'User',
+      avatarUrl: u.avatarUrl ? String(u.avatarUrl) : m.avatarUrl || '',
+      userName: u.name ? String(u.name) : m.userName || 'User',
     };
   });
+}
+
+async function enrichOne(message) {
+  if (!message) return message;
+  const list = await enrichAvatars([message]);
+  return list[0] || message;
 }
 
 async function findRecent({ limit = 100 } = {}) {
@@ -193,6 +206,8 @@ module.exports = {
   findById,
   softDeleteMessage,
   editMessage,
+  enrichOne,
+  enrichAvatars,
   findByPageId,
   GLOBAL_SCOPE,
   DELETED_PLACEHOLDER,
