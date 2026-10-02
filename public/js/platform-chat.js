@@ -1,5 +1,5 @@
 /**
- * WhatsApp-style site chat: bubbles, avatars, names, right-click menu, edit, soft-delete.
+ * WhatsApp-style site chat + live notifications (toast, badge, optional browser notify).
  */
 (function () {
   var root = document.getElementById('platform-chat-root');
@@ -71,6 +71,155 @@
     } catch (e) {
       return '';
     }
+  }
+
+  function clearUnread() {
+    unread = 0;
+    if (badge) {
+      badge.textContent = '0';
+      badge.classList.remove('is-on');
+    }
+  }
+
+  function hideToast() {
+    var el = document.getElementById('platform-chat-toast');
+    if (el) el.remove();
+  }
+
+  function openPanel() {
+    if (!panel) return;
+    panel.style.display = 'flex';
+    panel.style.flexDirection = 'column';
+    var toggle = document.getElementById('platform-chat-toggle');
+    if (toggle) toggle.setAttribute('aria-expanded', 'true');
+    clearUnread();
+    hideToast();
+    if (input) {
+      try {
+        input.focus();
+      } catch (e) {}
+    }
+  }
+
+  function showToast(m) {
+    if (!m || m.deleted) return;
+    if (meId && String(m.userId) === String(meId)) return;
+
+    hideToast();
+    var name = m.userName || 'Someone';
+    var body = String(m.body || '').slice(0, 120);
+    var toast = document.createElement('div');
+    toast.id = 'platform-chat-toast';
+    toast.setAttribute('role', 'status');
+    toast.innerHTML =
+      '<div class="pct-avatar"></div>' +
+      '<div class="pct-body">' +
+      '<div class="pct-name"></div>' +
+      '<div class="pct-text"></div>' +
+      '</div>' +
+      '<button type="button" class="pct-close" aria-label="Dismiss">×</button>';
+
+    var nameEl = toast.querySelector('.pct-name');
+    var textEl = toast.querySelector('.pct-text');
+    var avEl = toast.querySelector('.pct-avatar');
+    if (nameEl) nameEl.textContent = name;
+    if (textEl) textEl.textContent = body || 'New message';
+
+    var avUrl =
+      m.avatarUrl ||
+      (m.userId ? '/api/avatar/' + encodeURIComponent(String(m.userId)) : '');
+    if (avUrl && avEl) {
+      var img = document.createElement('img');
+      img.src = avUrl;
+      img.alt = '';
+      img.onerror = function () {
+        img.remove();
+        avEl.textContent = String(name).charAt(0).toUpperCase() || '?';
+      };
+      avEl.appendChild(img);
+    } else if (avEl) {
+      avEl.textContent = String(name).charAt(0).toUpperCase() || '?';
+    }
+
+    toast.addEventListener('click', function (e) {
+      if (e.target && e.target.classList && e.target.classList.contains('pct-close')) {
+        e.stopPropagation();
+        hideToast();
+        return;
+      }
+      openPanel();
+    });
+
+    document.body.appendChild(toast);
+    requestAnimationFrame(function () {
+      toast.classList.add('is-visible');
+    });
+
+    clearTimeout(showToast._timer);
+    showToast._timer = setTimeout(function () {
+      if (toast.parentNode) {
+        toast.classList.remove('is-visible');
+        setTimeout(function () {
+          if (toast.parentNode) toast.remove();
+        }, 280);
+      }
+    }, 5500);
+
+    try {
+      if (
+        typeof Notification !== 'undefined' &&
+        Notification.permission === 'granted' &&
+        document.hidden
+      ) {
+        var n = new Notification(name + ' — Chat', {
+          body: body || 'New message',
+          tag: 'platform-chat',
+        });
+        n.onclick = function () {
+          try {
+            window.focus();
+          } catch (e) {}
+          openPanel();
+          n.close();
+        };
+      } else if (
+        typeof Notification !== 'undefined' &&
+        Notification.permission === 'default' &&
+        !showToast._asked
+      ) {
+        showToast._asked = true;
+        Notification.requestPermission().catch(function () {});
+      }
+    } catch (e) {}
+  }
+
+  function notifyNewMessage(m) {
+    if (!m) return;
+    if (meId && String(m.userId) === String(meId)) return;
+
+    if (!isOpen()) {
+      unread += 1;
+      if (badge) {
+        badge.textContent = String(unread > 99 ? '99+' : unread);
+        badge.classList.add('is-on');
+      }
+    }
+    showToast(m);
+
+    try {
+      if (document.hidden && !notifyNewMessage._title) {
+        notifyNewMessage._title = document.title;
+        document.title = '(' + unread + ') New message';
+        var restore = function () {
+          if (notifyNewMessage._title) {
+            document.title = notifyNewMessage._title;
+            notifyNewMessage._title = null;
+          }
+          document.removeEventListener('visibilitychange', restore);
+        };
+        document.addEventListener('visibilitychange', restore);
+      }
+    } catch (e) {}
   }
 
   function hideMenu() {
@@ -410,6 +559,16 @@
     });
   }
 
+  var toggleBtn = document.getElementById('platform-chat-toggle');
+  if (toggleBtn) {
+    toggleBtn.addEventListener('click', function () {
+      setTimeout(function () {
+        if (isOpen()) clearUnread();
+        else hideToast();
+      }, 0);
+    });
+  }
+
   if (typeof io === 'undefined') {
     setStatus('online', 'Online');
     loadHistoryRest();
@@ -456,13 +615,7 @@
 
   socket.on('chat:message', function (m) {
     addMsg(m);
-    if (!isOpen()) {
-      unread += 1;
-      if (badge) {
-        badge.textContent = String(unread);
-        badge.classList.add('is-on');
-      }
-    }
+    notifyNewMessage(m);
   });
 
   socket.on('chat:deleted', function (m) {
