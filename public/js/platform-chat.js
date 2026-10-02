@@ -1,5 +1,5 @@
 /**
- * WhatsApp-style site chat: bubbles, right-click menu, edit, soft-delete.
+ * WhatsApp-style site chat: bubbles, avatars, names, right-click menu, edit, soft-delete.
  */
 (function () {
   var root = document.getElementById('platform-chat-root');
@@ -23,10 +23,10 @@
 
   function esc(s) {
     return String(s || '')
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
+      .replace(/&/g, '&')
+      .replace(/</g, '<')
+      .replace(/>/g, '>')
+      .replace(/"/g, '"');
   }
   function token() {
     return (window.__AUTH__ && window.__AUTH__.csrfToken) || '';
@@ -105,6 +105,27 @@
   });
   document.addEventListener('scroll', hideMenu, true);
 
+  function avatarHtml(m) {
+    var name = m.userName || 'User';
+    var initial = esc(String(name).charAt(0).toUpperCase() || 'U');
+    if (m.avatarUrl) {
+      return (
+        '<div class="pc-avatar" title="' +
+        esc(name) +
+        '"><img src="' +
+        esc(m.avatarUrl) +
+        '" alt="" class="pc-avatar-img"></div>'
+      );
+    }
+    return (
+      '<div class="pc-avatar pc-avatar-fallback" title="' +
+      esc(name) +
+      '"><span>' +
+      initial +
+      '</span></div>'
+    );
+  }
+
   function renderBubble(m) {
     var mine = meId && String(m.userId) === String(meId);
     var wrap = document.createElement('div');
@@ -139,7 +160,17 @@
       '</div>' +
       meta;
 
-    wrap.appendChild(bubble);
+    var av = document.createElement('div');
+    av.innerHTML = avatarHtml(m);
+    var avEl = av.firstChild;
+
+    if (mine) {
+      wrap.appendChild(bubble);
+      if (avEl) wrap.appendChild(avEl);
+    } else {
+      if (avEl) wrap.appendChild(avEl);
+      wrap.appendChild(bubble);
+    }
 
     wrap.addEventListener('contextmenu', function (e) {
       e.preventDefault();
