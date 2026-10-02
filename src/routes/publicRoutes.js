@@ -1,6 +1,5 @@
 /**
  * Public routes (no authentication required for viewing).
- * Comment actions require login (middleware applied on those routes).
  */
 
 const express = require('express');
@@ -12,11 +11,12 @@ const accountController = require('../controllers/accountController');
 const progressController = require('../controllers/progressController');
 const chatModel = require('../models/chatModel');
 
-// ---- Site-wide chat (REST fallback when Socket.io is unavailable) ----
+// ---- Site-wide chat ----
 router.get('/api/chat/messages', requireAuth, async (req, res) => {
   try {
-    const history = await chatModel.findRecent({ limit: 100 });
-    res.json({ ok: true, history: history || [] });
+    const history = await chatModel.findRecent({ limit: 120 });
+    const meId = req.session.user && req.session.user._id ? String(req.session.user._id) : '';
+    res.json({ ok: true, history: history || [], meId });
   } catch (err) {
     console.error('GET /api/chat/messages', err.message);
     res.status(500).json({ ok: false, error: 'Could not load messages' });
@@ -26,14 +26,10 @@ router.get('/api/chat/messages', requireAuth, async (req, res) => {
 router.post('/api/chat/messages', requireAuth, async (req, res) => {
   try {
     const user = req.session && req.session.user;
-    if (!user || !user._id) {
-      return res.status(401).json({ ok: false, error: 'Login required' });
-    }
+    if (!user || !user._id) return res.status(401).json({ ok: false, error: 'Login required' });
     const { stripHtml } = require('../middleware/security');
     const body = stripHtml(String((req.body && req.body.body) || ''), 1000);
-    if (!body.trim()) {
-      return res.status(400).json({ ok: false, error: 'Empty message' });
-    }
+    if (!body.trim()) return res.status(400).json({ ok: false, error: 'Empty message' });
     const pageId = (req.body && req.body.pageId) || null;
     const message = await chatModel.createMessage({
       userId: user._id,
@@ -41,9 +37,7 @@ router.post('/api/chat/messages', requireAuth, async (req, res) => {
       body,
       pageId,
     });
-    if (!message) {
-      return res.status(400).json({ ok: false, error: 'Invalid message' });
-    }
+    if (!message) return res.status(400).json({ ok: false, error: 'Invalid message' });
     try {
       const io = req.app.get('io');
       if (io) io.to('site:global').emit('chat:message', message);
@@ -52,6 +46,50 @@ router.post('/api/chat/messages', requireAuth, async (req, res) => {
   } catch (err) {
     console.error('POST /api/chat/messages', err.message);
     res.status(500).json({ ok: false, error: 'Send failed' });
+  }
+});
+
+router.patch('/api/chat/messages/:id', requireAuth, async (req, res) => {
+  try {
+    const user = req.session && req.session.user;
+    if (!user || !user._id) return res.status(401).json({ ok: false, error: 'Login required' });
+    const { stripHtml } = require('../middleware/security');
+    const body = stripHtml(String((req.body && req.body.body) || ''), 1000);
+    if (!body.trim()) return res.status(400).json({ ok: false, error: 'Empty message' });
+    const message = await chatModel.editMessage(req.params.id, {
+      userId: user._id,
+      isAdmin: user.role === 'admin',
+      body,
+    });
+    if (!message) return res.status(403).json({ ok: false, error: 'Cannot edit' });
+    try {
+      const io = req.app.get('io');
+      if (io) io.to('site:global').emit('chat:edited', message);
+    } catch (_) {}
+    res.json({ ok: true, message });
+  } catch (err) {
+    console.error('PATCH /api/chat/messages/:id', err.message);
+    res.status(500).json({ ok: false, error: 'Edit failed' });
+  }
+});
+
+router.delete('/api/chat/messages/:id', requireAuth, async (req, res) => {
+  try {
+    const user = req.session && req.session.user;
+    if (!user || !user._id) return res.status(401).json({ ok: false, error: 'Login required' });
+    const message = await chatModel.softDeleteMessage(req.params.id, {
+      userId: user._id,
+      isAdmin: user.role === 'admin',
+    });
+    if (!message) return res.status(403).json({ ok: false, error: 'Cannot delete' });
+    try {
+      const io = req.app.get('io');
+      if (io) io.to('site:global').emit('chat:deleted', message);
+    } catch (_) {}
+    res.json({ ok: true, message });
+  } catch (err) {
+    console.error('DELETE /api/chat/messages/:id', err.message);
+    res.status(500).json({ ok: false, error: 'Delete failed' });
   }
 });
 
@@ -71,9 +109,7 @@ router.post(
   requireAuth,
   (req, res, next) => {
     accountController.upload.single('avatar')(req, res, (err) => {
-      if (err) {
-        return res.redirect('/account?error=image');
-      }
+      if (err) return res.redirect('/account?error=image');
       next();
     });
   },
