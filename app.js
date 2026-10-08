@@ -155,7 +155,7 @@ app.post('/contact', (req, res) => {
 app.get('/api/me', async (req, res) => {
   const sessionUser = req.session && req.session.user ? req.session.user : null;
   if (!sessionUser) {
-    return res.json({ loggedIn: false, name: '', role: '', isAdmin: false, avatarUrl: '', theme: 'light' });
+    return res.json({ loggedIn: false, userId: '', name: '', role: '', isAdmin: false, avatarUrl: '', theme: 'light' });
   }
   let avatarUrl = sessionUser.avatarUrl || '';
   let name = sessionUser.name || '';
@@ -164,7 +164,13 @@ app.get('/api/me', async (req, res) => {
     const userModel = require('./src/models/userModel');
     const dbUser = await userModel.findById(sessionUser._id);
     if (dbUser) {
-      avatarUrl = dbUser.avatarUrl || '';
+      const raw = dbUser.avatarUrl || '';
+      // Never put multi-KB data-URLs into session/API clients — use stable endpoint
+      avatarUrl = raw
+        ? ((raw.startsWith('data:') || raw.length > 400)
+            ? '/api/avatar/' + String(sessionUser._id)
+            : raw)
+        : '';
       name = dbUser.name || name;
       theme = dbUser.theme === 'dark' ? 'dark' : 'light';
       sessionUser.avatarUrl = avatarUrl;
@@ -174,6 +180,7 @@ app.get('/api/me', async (req, res) => {
   } catch (e) { /* session fallback */ }
   res.json({
     loggedIn: true,
+    userId: String(sessionUser._id || ''),
     name,
     role: sessionUser.role || '',
     isAdmin: Boolean(sessionUser.role === 'admin'),
