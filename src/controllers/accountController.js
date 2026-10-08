@@ -1,5 +1,6 @@
 /**
  * User account / profile dashboard (all roles).
+ * Users: profile + progress. Admins: same + link to admin panel.
  */
 
 const path = require('path');
@@ -34,30 +35,46 @@ const fileFilter = (_req, file, cb) => {
 const upload = multer({
   storage,
   fileFilter,
-  limits: { fileSize: 3 * 1024 * 1024 },
+  limits: { fileSize: 1.5 * 1024 * 1024 },
 });
 
 /**
- * Store avatar in MongoDB as a data-URL so it survives host disk resets (Railway).
- * Falls back to a public file path if the image is too large.
+ * Always persist as data-URL in MongoDB — disk paths vanish on Railway redeploys.
  */
 function fileToAvatarUrl(file) {
-  if (!file || !file.path) {
-    if (file && file.filename) return '/uploads/avatars/' + file.filename;
-    return '';
-  }
-  try {
-    const buf = fs.readFileSync(file.path);
-    if (buf.length > 700000) {
-      return '/uploads/avatars/' + file.filename;
+  if (!file) return '';
+  const tryRead = (p) => {
+    try {
+      return fs.readFileSync(p);
+    } catch (_) {
+      return null;
     }
-    const mime = file.mimetype || 'image/jpeg';
-    const b64 = buf.toString('base64');
-    return 'data:' + mime + ';base64,' + b64;
-  } catch (e) {
-    if (file.filename) return '/uploads/avatars/' + file.filename;
-    return '';
+  };
+  let buf = null;
+  if (file.path) buf = tryRead(file.path);
+  if (!buf && file.buffer) buf = file.buffer;
+  if (!buf) return '';
+
+  if (buf.length > 1200000) {
+    const err = new Error('Image is too large. Please use a photo under 1 MB.');
+    err.code = 'AVATAR_TOO_LARGE';
+    throw err;
   }
+  const mime = file.mimetype || 'image/jpeg';
+  return 'data:' + mime + ';base64,' + buf.toString('base64');
+}
+
+/**
+ * Keep session small: never store multi-hundred-KB data-URLs in the session.
+ * UI loads the real photo from DB via /api/avatar/:userId.
+ */
+function avatarRefForSession(user) {
+  if (!user) return '';
+  const raw = user.avatarUrl ? String(user.avatarUrl) : '';
+  if (!raw) return '';
+  if (raw.startsWith('/') && raw.length < 300) return raw;
+  if (user._id) return '/api/avatar/' + String(user._id);
+  return '';
 }
 
 function syncSessionUser(req, user) {
@@ -65,44 +82,20 @@ function syncSessionUser(req, user) {
   req.session.user.name = user.name;
   req.session.user.email = user.email;
   req.session.user.role = user.role;
-  req.session.user.avatarUrl = user.avatarUrl || '';
+  req.session.user.avatarUrl = avatarRefForSession(user);
   req.session.user.theme = user.theme === 'dark' ? 'dark' : 'light';
 }
 
 async function loadProgressForUser(userId) {
   const completedIds = await progressModel.findCompletedPageIds(userId);
-  let pages = [];
-  try {
-    pages = await pageModel.findPublishedPages();
-  } catch (e) {
-    pages = [];
-  }
-  let allPublished = [];
-  try {
-    allPublished = await pageModel.findAllPages();
-    allPublished = (allPublished || []).filter((p) => p.status === 'published');
-  } catch (e) {
-    allPublished = pages || [];
-  }
-
-  const byId = new Map((allPublished || []).map((p) => [String(p._id), p]));
-  const completed = completedIds
-    .map((id) => byId.get(String(id)))
-    .filter(Boolean)
-    .map((p) => ({
-      _id: p._id,
-      title: p.title,
-      slug: p.slug,
-      weekNumber: p.weekNumber,
-    }));
-
-  const totalLessons =
-    (pages || []).filter((p) => p.userAccess !== false).length || (allPublished || []).length;
+  const pages = await pageModel.findPublished();
+  const lessons = (pages || []).filter((p) => p.slug && p.slug !== 'home');
+  const idSet = new Set((completedIds || []).map(String));
+  const completed = lessons.filter((l) => idSet.has(String(l._id)));
   return {
-    completedIds,
     completed,
     completedCount: completed.length,
-    totalLessons,
+    totalLessons: lessons.length,
   };
 }
 
@@ -115,11 +108,61 @@ async function showAdminProfile(req, res) {
 }
 
 async function updateAdminProfile(req, res, next) {
-  return updateUserSettings(req, res, next);
+  try {
+    if (!req.session.user || !isValidObjectId(req.session.user._id)) {
+      return res.redirect('/login');
+    }
+    const name = cleanString(req.body.name, 100);
+    if (!name || name.length < 2) {
+      return res.redirect('/account/settings?error=name');
+    }
+    const updates = { name };
+    if (req.file) {
+      updates.avatarUrl = fileToAvatarUrl(req.file);
+    }
+    const user = await userModel.updateProfile(req.session.user._id, updates);
+    if (user) syncSessionUser(req, user);
+    res.redirect('/account/settings?success=updated');
+  } catch (err) {
+    if (err && (err.code === 'AVATAR_TOO_LARGE' || /too large/i.test(err.message || ''))) {
+      return res.redirect('/account/settings?error=image-size');
+    }
+    if (err && err.message && /image/i.test(err.message)) {
+      return res.redirect('/account/settings?error=image');
+    }
+    next(err);
+  }
 }
 
 async function updateAccount(req, res, next) {
-  return updateUserSettings(req, res, next);
+  try {
+    if (!req.session.user || !isValidObjectId(req.session.user._id)) {
+      return res.redirect('/login');
+    }
+
+    const name = cleanString(req.body.name, 100);
+    if (!name || name.length < 2) {
+      return res.redirect('/account/settings?error=name');
+    }
+
+    const updates = { name };
+    if (req.file) {
+      updates.avatarUrl = fileToAvatarUrl(req.file);
+    }
+
+    const user = await userModel.updateProfile(req.session.user._id, updates);
+    if (user) syncSessionUser(req, user);
+
+    res.redirect('/account/settings?success=updated');
+  } catch (err) {
+    if (err && (err.code === 'AVATAR_TOO_LARGE' || /too large/i.test(err.message || ''))) {
+      return res.redirect('/account/settings?error=image-size');
+    }
+    if (err && err.message && /image/i.test(err.message)) {
+      return res.redirect('/account/settings?error=image');
+    }
+    next(err);
+  }
 }
 
 async function showUserSettings(req, res, next) {
@@ -168,7 +211,6 @@ async function updateUserSettings(req, res, next) {
     const updates = { theme };
     if (name) updates.name = name;
 
-    // Only change avatar when user uploads or explicitly removes — never clear otherwise
     if (removeAvatar) {
       updates.avatarUrl = '';
     } else if (req.file) {
@@ -181,7 +223,9 @@ async function updateUserSettings(req, res, next) {
       req.session.user.theme = theme;
       if (name) req.session.user.name = name;
       if (removeAvatar) req.session.user.avatarUrl = '';
-      else if (req.file) req.session.user.avatarUrl = updates.avatarUrl;
+      else if (req.file && updates.avatarUrl) {
+        req.session.user.avatarUrl = '/api/avatar/' + String(req.session.user._id);
+      }
     }
 
     if (removeAvatar) {
@@ -189,6 +233,9 @@ async function updateUserSettings(req, res, next) {
     }
     res.redirect('/account/settings?success=updated');
   } catch (err) {
+    if (err && (err.code === 'AVATAR_TOO_LARGE' || /too large/i.test(err.message || ''))) {
+      return res.redirect('/account/settings?error=image-size');
+    }
     if (err && err.message && /image/i.test(err.message)) {
       return res.redirect('/account/settings?error=image');
     }
@@ -204,4 +251,5 @@ module.exports = {
   showUserSettings,
   updateUserSettings,
   upload,
+  syncSessionUser,
 };
